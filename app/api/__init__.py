@@ -1,0 +1,11 @@
+"""API routers, all mounted under /api by app.main."""
+
+from fastapi import APIRouter
+
+from app.api import events, photos, settings, weather
+
+router = APIRouter()
+router.include_router(settings.router)
+router.include_router(photos.router)
+router.include_router(events.router)
+router.include_router(weather.router)

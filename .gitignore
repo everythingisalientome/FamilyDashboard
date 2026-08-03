@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+/.venv
+
+# Local secrets and generated cache — never commit
+.env
+data/
+
+# Photos: keep the folder and its note, but never commit the actual images
+# (manual drops or Google Photos syncs). Add back only the placeholder README.
+photos/*
+!photos/README.md
+
+# Editor / OS
+/.vscode
+/.DS_Store

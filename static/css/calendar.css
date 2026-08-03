@@ -1,0 +1,265 @@
+/* Month grid and the next-up agenda strip. Loaded after style.css. */
+
+/* ---------- Month calendar ---------------------------------------------- */
+
+.calendar {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/* Every pixel of chrome here comes straight out of the day cells. */
+.calendar { padding-top: 14px; padding-bottom: 14px; }
+.calendar .panel-title { margin-bottom: 6px; font-size: 1.25rem; }
+
+.legend {
+  display: flex;
+  gap: 18px;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.legend-item { display: flex; align-items: center; gap: 7px; }
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.weekdays, .month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.weekday {
+  padding-bottom: 3px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* --weeks is set by JS: 5 or 6 rows, always filling the panel exactly. */
+.month-grid {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: repeat(var(--weeks, 6), minmax(0, 1fr));
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 4px 6px;
+  border-radius: 9px;
+  background: #151922;
+  overflow: hidden;
+}
+
+.day.is-outside { background: #0e1117; }
+.day.is-outside .day-number { color: #4a5261; }
+
+.day.is-today {
+  background: #1d2637;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Multi-day category span: faint wash of the category colour across every day
+   it covers, so a break week reads as one block. Placed after .is-today so a
+   categorised "today" keeps its ring but takes the tint. */
+.day.has-category {
+  background: color-mix(in srgb, var(--cat-color) 16%, #151922);
+}
+
+.day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.day-number {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.day.is-today .day-number { color: var(--accent); }
+
+/* Overflow count sits beside the date instead of eating a chip's worth of
+   vertical space — a cell only has room for one or two chips as it is. */
+.day-more {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+/* Left colour bar rather than a dot: it survives being clipped, and the bar
+   reads as "which calendar" from ten feet away better than a 6px circle. */
+.chip {
+  flex: none;
+  padding: 0 5px;
+  border-left: 4px solid var(--chip-color, var(--text-dim));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--chip-color, #8b93a3) 16%, transparent);
+  font-size: 0.88rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-time {
+  margin-right: 5px;
+  font-weight: 600;
+  color: var(--chip-color, var(--text-dim));
+}
+
+/* Categorised events (holiday/school/quarter/…). --chip-color is already the
+   category colour inline, so the bar and fill come along; put the title in that
+   colour too and bolden it so the category reads at a glance. */
+.chip.is-category {
+  color: var(--chip-color);
+  font-weight: 600;
+}
+
+/* ---------- Next-up agenda strip ---------------------------------------- */
+
+.agenda-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 4px solid var(--chip-color, var(--text-dim));
+}
+
+.agenda-when {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chip-color, var(--text-dim));
+}
+
+/* Smaller type + three lines so long school titles fit before clamping. */
+.agenda-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-size: 1.05rem;
+  line-height: 1.22;
+  overflow: hidden;
+}
+
+/* Categorised agenda entries: the accent (--chip-color) is already the category
+   colour inline; tint the title to match so the category reads at a glance. */
+.agenda-item.is-category .agenda-title { color: var(--chip-color); }
+
+.agenda-empty {
+  grid-column: 1 / -1;
+  align-self: center;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+}
+
+/* ---------- Upcoming ticker (one line, does not scroll) ----------------- */
+
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;               /* the row is min-content, so this IS its height */
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 1.05rem;
+  /* Appealing but not loud: a deep indigo→blue→teal wash with a soft sheen. */
+  background:
+    linear-gradient(90deg, #3a2d6b 0%, #274a86 55%, #1f6f74 100%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ticker-lead {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.ticker-list {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;                /* extra items clip; the strip never scrolls */
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ticker-item:not(:first-child)::before {
+  content: "||";
+  margin: 0 16px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+}
+
+.ticker-date {
+  flex: none;
+  font-weight: 700;
+  color: #ffd966;                  /* golden date so it pops against the gradient */
+  letter-spacing: 0.03em;
+}
+
+.ticker-title {
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #eef1f6;
+}
+
+.ticker-empty { color: rgba(255, 255, 255, 0.65); }
+

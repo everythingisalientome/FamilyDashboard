@@ -1,0 +1,211 @@
+/* Family Wall Dashboard — 1920x1080 landscape, always-on, viewed from across
+   a room. No scrollbars, no hover states, no cursor. */
+
+:root {
+  --bg: #08090c;
+  --panel: #101319;
+  --panel-edge: #1e232d;
+  --text: #f2f4f8;
+  --text-dim: #8b93a3;
+  --accent: #6fb1ff;
+  --alert: #c0392b;
+
+  --gap: 13px;
+  --radius: 16px;
+  --photo-column: 40%;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;               /* wall display: never scroll */
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  cursor: none;                   /* kiosk: no mouse attached */
+  user-select: none;
+}
+
+/* ---------- Layout ------------------------------------------------------ */
+
+.dashboard {
+  display: grid;
+  height: 100vh;
+  width: 100vw;
+  padding: var(--gap);
+  gap: var(--gap);
+  grid-template-columns: var(--photo-column) 1fr;
+  /* The clock now lives as an overlay on the photos, so the right column is
+     just the three data panels. They stay fr so the Phase 3 banner's height
+     comes out of every region proportionally rather than falling entirely on
+     the month grid — which would squeeze its day cells below one event chip. */
+  grid-template-rows:
+    min-content
+    minmax(0, 620fr)    /* calendar (absorbs the old clock row) */
+    minmax(0, 150fr)    /* agenda   */
+    min-content         /* ticker: exactly its own height, no slack */
+    minmax(0, 200fr);   /* weather  */
+  grid-template-areas:
+    "banner banner"
+    "photos calendar"
+    "photos agenda"
+    "photos ticker"
+    "photos weather";
+}
+
+.banner   { grid-area: banner; }
+.photos   { grid-area: photos; }
+.calendar { grid-area: calendar; }
+.agenda   { grid-area: agenda; }
+.ticker   { grid-area: ticker; }
+.weather  { grid-area: weather; }
+
+/* With no banner, row 1 collapses to 0 but its row-gap stays. Drop the top
+   padding so the remaining gap is exactly the normal edge margin. */
+.dashboard:has(> .banner[hidden]) { padding-top: 0; }
+
+.panel-title {
+  margin: 0 0 12px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.calendar, .agenda, .weather {
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ---------- Alert banner (Phase 3) -------------------------------------- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 32px;
+  background: var(--alert);
+  border-radius: var(--radius);
+}
+
+.banner[hidden] { display: none; }
+
+.banner-text {
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* ---------- Photos ------------------------------------------------------ */
+
+.photos {
+  position: relative;
+  border-radius: var(--radius);
+  background: #000;
+  overflow: hidden;
+}
+
+.photo-stage { position: absolute; inset: 0; }
+
+.photo-layer {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 2s ease-in-out;
+}
+
+.photo-layer.is-visible { opacity: 1; }
+
+/* Blurred fill behind the photo so portrait shots don't leave dead bars. */
+.photo-backdrop {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(38px) brightness(0.4) saturate(1.1);
+}
+
+/* contain keeps every photo whole, whatever its orientation. */
+.photo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.photo-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.photo-empty[hidden] { display: none; }
+
+.photo-empty code {
+  margin: 0 0.35em;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+
+/* ---------- Clock (overlaid on the photos) ------------------------------ */
+
+/* Top-left of the photo column, no panel of its own. A soft top-down scrim
+   keeps the digits legible over bright photos while the background stays
+   transparent. The parent .photos clips it to the rounded corner. */
+.clock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: baseline;          /* time, am/pm and date share one baseline */
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  padding: 18px 26px 26px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.22) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;           /* never intercept — it's a wall display */
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+
+.clock-overlay .time {
+  font-size: 2.6rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+/* Sits right against the time — "6:44" + "pm" reads as one token. */
+.clock-overlay .meridiem {
+  margin-left: 3px;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.clock-overlay .date {
+  margin-left: 16px;
+  font-size: 1.7rem;
+  font-weight: 300;
+  color: #dfe4ec;                 /* a touch dimmer than the time */
+}
+

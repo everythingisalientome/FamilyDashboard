@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1">
+  <title>Family Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/calendar.css">
+  <link rel="stylesheet" href="/css/weather.css">
+</head>
+<body>
+  <div class="dashboard">
+
+    <!-- Full-width alert banner. Phase 3 fills this in; hidden until then. -->
+    <header id="banner" class="banner" hidden>
+      <span id="banner-text" class="banner-text"></span>
+    </header>
+
+    <section class="photos" aria-label="Photo slideshow">
+      <div id="photo-stage" class="photo-stage">
+        <figure class="photo-layer is-visible" data-layer="a">
+          <div class="photo-backdrop"></div>
+          <img class="photo-image" alt="">
+        </figure>
+        <figure class="photo-layer" data-layer="b">
+          <div class="photo-backdrop"></div>
+          <img class="photo-image" alt="">
+        </figure>
+      </div>
+      <p id="photo-empty" class="photo-empty" hidden>
+        Drop images into the <code>photos/</code> folder
+      </p>
+
+      <!-- Clock + date overlaid on the photos: one compact line, transparent
+           with a scrim so it stays legible over bright photos. -->
+      <div class="clock-overlay" aria-label="Time and date">
+        <span id="time" class="time">--:--</span><span id="meridiem" class="meridiem"></span>
+        <span id="date" class="date"></span>
+      </div>
+    </section>
+
+    <section class="calendar" aria-label="Month calendar">
+      <div class="calendar-head">
+        <h2 id="month-label" class="panel-title">&nbsp;</h2>
+        <div id="legend" class="legend"></div>
+      </div>
+      <div id="weekdays" class="weekdays"></div>
+      <div id="month-grid" class="month-grid"></div>
+    </section>
+
+    <section class="agenda" aria-label="Next events">
+      <ol id="agenda-list" class="agenda-list"></ol>
+    </section>
+
+    <!-- One-line, non-scrolling strip of upcoming keyword highlights. -->
+    <section class="ticker" aria-label="Upcoming highlights">
+      <span class="ticker-lead">UPCOMING</span>
+      <div id="ticker-list" class="ticker-list"></div>
+    </section>
+
+    <section class="weather" aria-label="Weather">
+      <div class="weather-now">
+        <svg class="wx-icon wx-icon-lg"><use id="now-icon" href="#wx-clear"></use></svg>
+        <div class="now-block">
+          <div class="now-headline">
+            <span id="now-temp" class="now-temp">--&deg;</span><span id="now-temp-c" class="now-temp-c"></span>
+            <span id="now-condition" class="now-condition"></span>
+          </div>
+          <div id="now-l2" class="now-line"></div>
+          <div id="now-l3" class="now-line"></div>
+          <div id="now-l4" class="now-line"></div>
+        </div>
+      </div>
+      <ol id="forecast" class="forecast"></ol>
+    </section>
+
+  </div>
+
+  <!-- Weather glyphs. Drawn locally so the page never loads an NWS image. -->
+  <svg class="wx-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <g id="g-cloud">
+        <path d="M18 42h26a9 9 0 0 0 .8-18 14 14 0 0 0-26.4-3A9.5 9.5 0 0 0 18 42Z"/>
+      </g>
+
+      <symbol id="wx-clear" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="12"/>
+        <g class="wx-rays">
+          <path d="M32 4v9M32 51v9M4 32h9M51 32h9M12 12l6.5 6.5M45.5 45.5 52 52M52 12l-6.5 6.5M18.5 45.5 12 52"/>
+        </g>
+      </symbol>
+
+      <symbol id="wx-clear-night" viewBox="0 0 64 64">
+        <path d="M44 38A17 17 0 0 1 26 20a17 17 0 0 0 4 33 17 17 0 0 0 16-11 17 17 0 0 1-2 -4Z"/>
+      </symbol>
+
+      <symbol id="wx-partly" viewBox="0 0 64 64">
+        <circle cx="24" cy="22" r="9"/>
+        <path class="wx-rays" d="M24 4v6M24 34v3M6 22h6M36 22h4M11 9l4 4M37 9l-4 4"/>
+        <use href="#g-cloud" x="6" y="8"/>
+      </symbol>
+
+      <symbol id="wx-partly-night" viewBox="0 0 64 64">
+        <path d="M34 26a12 12 0 0 1-12-12 12 12 0 1 0 15 15 12 12 0 0 1-3-3Z"/>
+        <use href="#g-cloud" x="6" y="8"/>
+      </symbol>
+
+      <symbol id="wx-cloudy" viewBox="0 0 64 64">
+        <use href="#g-cloud" x="1" y="6"/>
+      </symbol>
+
+      <symbol id="wx-rain" viewBox="0 0 64 64">
+        <use href="#g-cloud" x="1" y="-1"/>
+        <path class="wx-drops" d="M21 48l-3 9M33 48l-3 9M45 48l-3 9"/>
+      </symbol>
+
+      <symbol id="wx-thunder" viewBox="0 0 64 64">
+        <use href="#g-cloud" x="1" y="-3"/>
+        <path class="wx-bolt" d="M34 42l-11 13h8l-3 11 12-14h-8l2-10Z"/>
+      </symbol>
+
+      <symbol id="wx-snow" viewBox="0 0 64 64">
+        <use href="#g-cloud" x="1" y="-1"/>
+        <path class="wx-drops" d="M20 50v8M16.5 52l7 4M23.5 52l-7 4M40 50v8M36.5 52l7 4M43.5 52l-7 4"/>
+      </symbol>
+
+      <symbol id="wx-sleet" viewBox="0 0 64 64">
+        <use href="#g-cloud" x="1" y="-1"/>
+        <path class="wx-drops" d="M20 48l-3 9M42 50v8M38.5 52l7 4M45.5 52l-7 4M31 48l-3 9"/>
+      </symbol>
+
+      <symbol id="wx-fog" viewBox="0 0 64 64">
+        <use href="#g-cloud" x="1" y="-6"/>
+        <path class="wx-drops" d="M12 46h40M18 54h34"/>
+      </symbol>
+
+      <symbol id="wx-wind" viewBox="0 0 64 64">
+        <path class="wx-drops" d="M6 22h30a7 7 0 1 0-7-7M6 34h40a7 7 0 1 1-7 7M6 46h24"/>
+      </symbol>
+
+      <symbol id="wx-hot" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="13"/>
+        <g class="wx-rays">
+          <path d="M32 5v8M32 51v8M5 32h8M51 32h8M13 13l5 5M46 46l5 5M51 13l-5 5M18 46l-5 5"/>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
