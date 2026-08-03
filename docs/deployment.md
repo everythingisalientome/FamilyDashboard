@@ -154,6 +154,65 @@ New-NetFirewallRule -DisplayName "FamilyDashboard (8000/tcp)" -Direction Inbound
 nssm start $svc
 ```
 
+## 7. Pi kiosk (the wall display)
+
+The Pi's only job is to open one URL full-screen. Nothing from this repo runs on
+it. This is what worked on a **Raspberry Pi 3 B+ running Raspberry Pi OS Trixie**
+(desktop image), whose session is **labwc (Wayland)** — so the kiosk lives in
+labwc's autostart, not the old X11/LXDE files.
+
+**Flash a clean card (removes DAKBoard / any prior OS).** With Raspberry Pi
+Imager (<https://www.raspberrypi.com/software/>): choose *Raspberry Pi OS (with
+desktop)*, then **Edit Settings** before writing and set — hostname (e.g.
+`familywall`), a **username + password you choose**, **enable SSH** (password
+auth), and your **WiFi** SSID/password + country. This guarantees SSH access on
+first boot with known credentials; no keyboard/monitor needed.
+
+**First boot, then SSH in** (hostname avoids needing to know the DHCP IP):
+```bash
+ssh pi@familywall.local
+curl -sI http://<server-ip>:8000/ | head -1     # expect HTTP/1.1 200 OK
+```
+
+**Auto-login to the desktop and stop screen blanking:**
+```bash
+sudo raspi-config nonint do_boot_behaviour B4    # desktop autologin
+sudo raspi-config nonint do_blanking 1           # disable screen blank
+```
+
+**Create the kiosk autostart.** The file is `~/.config/labwc/autostart`, and its
+Chromium line must be **one unbroken line** ending in the URL:
+```bash
+#!/bin/bash
+while true; do
+  chromium --kiosk --noerrdialogs --disable-infobars --no-first-run --disable-session-crashed-bubble --disable-features=Translate --password-store=basic --ozone-platform=wayland "http://<server-ip>:8000/"
+  sleep 5
+done &
+```
+- The `while … sleep 5 … done &` loop relaunches Chromium if it ever exits (power
+  blip), so the wall self-heals.
+- `--password-store=basic` avoids the GNOME-keyring "unlock" prompt.
+- `--ozone-platform=wayland` runs Chromium natively under labwc.
+
+> **Paste gotcha (this bit us):** SSH terminals often mangle a paste — indenting
+> lines (which breaks a heredoc's closing `EOF`) or inserting newlines into a long
+> line (which split the `chromium` command off from its URL, so it opened the
+> default page). The reliable way to write the file is to edit it in `nano`, or
+> pipe a base64 blob (whitespace-tolerant):
+> `echo '<base64-of-the-file>' | base64 -d > ~/.config/labwc/autostart`.
+> Always `cat` the file afterward and confirm the URL is on the same line as
+> `chromium`.
+
+```bash
+chmod +x ~/.config/labwc/autostart
+sudo reboot
+```
+
+After reboot it auto-logs in and opens the dashboard full-screen. If a keyring
+dialog still appears, `rm -rf ~/.local/share/keyrings` and reboot once. Detach the
+mouse for the final install so no cursor shows (Wayland has no simple
+`unclutter`).
+
 ## Troubleshooting
 
 - **Service starts then stops immediately.** Read `data\logs\dashboard.err.log`.

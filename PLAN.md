@@ -391,6 +391,20 @@ surviving at least one source-page change without showing garbage.
 
 **Goal:** The reason we moved off the old service: easy to manage long-term.
 
+**Remaining in this phase** (deployment is live; these are the open items):
+- [ ] **Dashboard stale-dot** — a subtle indicator on the wall when any feed is
+  older than ~2× its refresh interval. The staleness math + `fetch_meta` reads
+  already exist in `app/api/admin.py` (`_stale_after`, the per-job `stale` flag);
+  this is surfacing the same signal on the dashboard, not new tracking.
+- [ ] **Feed editing + "Save & restart" from `/admin`** — write feeds/tunables
+  back to `.env` and apply via a service restart (just `nssm restart
+  FamilyDashboard`, already documented). Editable settings write to `.env`, never
+  a second store (see the Pass 1 env-vs-DB decision below). Only piece of the
+  admin page that mutates config; everything read-only shipped in Pass 1.
+
+Done in this phase so far: Pass 1 (admin status + manual refresh), Pass 2 (NSSM
+service), Pass 3 (admin logs + source URLs + orphan cleanup), Pass 4 (Pi kiosk).
+
 **Pass 1 done (read-only status + manual refresh)** — verified 2026-08-03 in a
 live server + browser. Decided up front: the admin page edits `.env` and applies
 via a service restart, *not* a second DB config store — every setting is imported
@@ -461,9 +475,18 @@ config store at all, so they shipped first.
 - `deployment.md` now documents the two log streams; `.env.example` gained the
   Logging section.
 
+**Pass 4 done (Pi kiosk)** — verified 2026-08-03: the wall Pi now shows the
+dashboard live. Re-flashed the DAKBoard Pi (Pi 3 B+) with a clean **Raspberry Pi
+OS Trixie** (desktop, **labwc/Wayland** session) via Raspberry Pi Imager with a
+preset user/password + SSH + WiFi (known credentials, headless). Kiosk is
+`~/.config/labwc/autostart` — a self-relaunching Chromium `--kiosk
+--ozone-platform=wayland --password-store=basic` loop at `http://192.168.0.68:8000/`
+— plus desktop autologin and blanking-off via `raspi-config nonint`. Documented
+as `docs/deployment.md` section 7, including the SSH-paste gotchas (indented
+heredoc terminators, long lines split mid-paste) and the base64-blob workaround.
+
 **Still to build:** dashboard stale-dot; feed add/remove + `.env` write + the
-"Save & restart" button; **Pi kiosk checklist** (the other half of the deploy
-spec — Raspberry Pi OS, auto-login, Chromium kiosk, blanking off).
+"Save & restart" button. (Deployment — Windows service + Pi kiosk — is now done.)
 
 **Already in place** (reuse, don't rebuild):
 - Adding/removing a feed already works without code: set `CAL_<KEY>_URL` in
