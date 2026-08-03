@@ -184,7 +184,7 @@ function dominantCategory(events) {
 
 // Drop chips off the bottom until the rest fit whole, and count what went.
 // Beats a fixed per-cell limit: a 5-week month has taller cells than a
-// 6-week one, and Phase 3's banner will shorten them again.
+// 6-week one, so how many fit is measured rather than assumed.
 function trimToFit(cell) {
   const list = cell.querySelector('.day-events');
   const total = list.children.length;

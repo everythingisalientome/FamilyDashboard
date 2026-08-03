@@ -14,6 +14,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import (
+    ALERTS_REFRESH_SECONDS,
     CALENDAR_REFRESH_DAY,
     CALENDAR_REFRESH_HOUR,
     CALENDAR_REFRESH_MINUTE,
@@ -22,7 +23,7 @@ from app.config import (
     PHOTOS_ALBUM_URL,
     WEATHER_REFRESH_SECONDS,
 )
-from app.fetchers import calendars, photos, weather
+from app.fetchers import alerts, calendars, photos, weather
 
 log = logging.getLogger("dashboard.scheduler")
 
@@ -55,6 +56,16 @@ def start() -> BackgroundScheduler:
         next_run_time=_soon(),
     )
     log.info("Scheduled weather every %d s", WEATHER_REFRESH_SECONDS)
+
+    # Alerts: short fixed interval like weather (active NWS alerts change fast
+    # and expire on their own), first run shortly after boot.
+    scheduler.add_job(
+        alerts.run,
+        IntervalTrigger(seconds=ALERTS_REFRESH_SECONDS),
+        id="alerts",
+        next_run_time=_soon(),
+    )
+    log.info("Scheduled alerts every %d s", ALERTS_REFRESH_SECONDS)
 
     # Calendars: nightly at a local wall-clock time (default every day 23:00;
     # day_of_week can pin it to one day for weekly). The cron trigger sets the

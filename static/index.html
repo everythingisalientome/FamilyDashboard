@@ -7,14 +7,10 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/calendar.css">
   <link rel="stylesheet" href="/css/weather.css">
+  <link rel="stylesheet" href="/css/alerts.css">
 </head>
 <body>
   <div class="dashboard">
-
-    <!-- Full-width alert banner. Phase 3 fills this in; hidden until then. -->
-    <header id="banner" class="banner" hidden>
-      <span id="banner-text" class="banner-text"></span>
-    </header>
 
     <section class="photos" aria-label="Photo slideshow">
       <div id="photo-stage" class="photo-stage">
@@ -37,6 +33,12 @@
         <span id="time" class="time">--:--</span><span id="meridiem" class="meridiem"></span>
         <span id="date" class="date"></span>
       </div>
+
+      <!-- Alerts: a single shiny pill along the bottom of the photo panel that
+           rotates through the active alerts one at a time. Hidden unless it is
+           the brief in-view window AND there is something to show. Never
+           affects the dashboard layout. -->
+      <div id="alerts-overlay" class="alerts-overlay" aria-live="polite" hidden></div>
     </section>
 
     <section class="calendar" aria-label="Month calendar">

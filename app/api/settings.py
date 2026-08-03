@@ -19,5 +19,8 @@ def get_settings() -> dict[str, Any]:
             "photo_list_refresh_seconds": config.PHOTO_LIST_REFRESH_SECONDS,
             "nightly_reload_hour": config.NIGHTLY_RELOAD_HOUR,
             "data_refresh_seconds": config.DATA_REFRESH_SECONDS,
+            "alert_show_seconds": config.ALERT_SHOW_SECONDS,
+            "alert_cycle_seconds": config.ALERT_CYCLE_SECONDS,
+            "alert_rotate_seconds": config.ALERT_ROTATE_SECONDS,
         }
     )

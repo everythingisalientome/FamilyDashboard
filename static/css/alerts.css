@@ -1,0 +1,122 @@
+/* Alerts overlay — a single shiny pill along the bottom-left of the photo
+   panel. It floats over the photos (like the clock, top-left) so it never
+   pushes the dashboard layout. Hidden most of the time; alerts.js fades it in
+   for a short window and rotates through the active alerts one at a time. Each
+   tone is a glossy gradient: red for warnings/closures, gold-orange for
+   advisories/trash, or a calendar's own colour. */
+
+.alerts-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-start;
+  padding: 30px 20px 18px;         /* top padding = room for the scrim fade */
+  /* Soft bottom-up scrim so the pill stays legible over a bright photo. */
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.12) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;            /* wall display — never intercept */
+  opacity: 0;                      /* revealed by .is-showing on a timer */
+  transition: opacity 0.6s ease-in-out;
+}
+
+.alerts-overlay[hidden] { display: none; }   /* JS-dead fallback: stay gone */
+.alerts-overlay.is-showing { opacity: 1; }
+
+/* One line, ellipsised if long. Glossy: vertical gradient + inset top
+   highlight + soft coloured glow, with a gentle brightness pulse. */
+.alert-pill {
+  --alert-color: #888;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  max-width: 100%;
+  padding: 6px 16px;
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  animation: alert-in 0.45s ease-out, alert-shine 2.6s ease-in-out 0.45s infinite;
+}
+
+.alerts-overlay:not(.is-showing) .alert-pill { animation-play-state: paused; }
+
+.alert-pill-title {
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.alert-pill-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1.1rem;
+  font-weight: 400;
+  opacity: 0.92;
+}
+
+.alert-pill-text::before {
+  content: "·";
+  margin-right: 7px;
+  opacity: 0.6;
+}
+
+/* ---- Tones ------------------------------------------------------------- */
+
+.tone-red {
+  background: linear-gradient(180deg, #ff7a6b 0%, #f0392b 46%, #c81e12 100%);
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(240, 57, 43, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.22);
+}
+
+.tone-gold {
+  background: linear-gradient(180deg, #ffd766 0%, #ffb02e 46%, #f2830c 100%);
+  color: #3a2200;
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(255, 176, 46, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.18);
+}
+
+.tone-custom {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--alert-color) 65%, white) 0%,
+    var(--alert-color) 52%,
+    color-mix(in srgb, var(--alert-color) 78%, black) 100%
+  );
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.22);
+}
+
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes alert-shine {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.14); }
+}
+
+/* Respect a kiosk that asks for reduced motion: no fade-in, no shine pulse. */
+@media (prefers-reduced-motion: reduce) {
+  .alert-pill { animation: none; }
+}

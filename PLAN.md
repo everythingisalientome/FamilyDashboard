@@ -256,7 +256,7 @@ chips unclipped and the clock inside its row, with no overflow anywhere.
 
 ---
 
-## Phase 3 — Alerts engine  [ ]
+## Phase 3 — Alerts engine  [x]
 
 **Goal:** The display gets loud when something needs attention (the thing
 the old service couldn't do).
@@ -282,6 +282,90 @@ the old service couldn't do).
 
 **Done when:** A test NWS alert and a fake "trash tomorrow" both render
 correctly, and expired alerts disappear on their own.
+
+**Verified 2026-08-02** at a forced 1920×1080 layout box, over three passes as
+the household reacted to it on the wall: (1) alert set + rules as a top banner;
+(2) rejected — the banner pushed the whole dashboard down — so moved to a
+photo-panel overlay; (3) rejected again for showing everything at once in big
+bold multi-line blocks, so reworked to a **single shiny pill that rotates
+through the alerts one at a time**, single-line, smaller/lighter type. Final
+design verified: the live NWS fetcher runs clean against `api.weather.gov` (0
+active alerts for Harrisburg, fetch recorded success). With test rows injected,
+`/api/alerts` returned a red "Severe Thunderstorm Warning" (+ its NWS headline),
+a gold "Heat Advisory", a gold "Trash tomorrow · Recycling · Garbage" (shown
+because the clock was past 5 pm), and a custom-purple "Ava's Birthday" from an
+alert-flagged calendar. A non-qualifying "Air Quality Alert" and an `expires`-in-
+the-past "Flood Warning" were both dropped; a "Tornado Warning" (not in the
+keyword list) still came through red via the severity safety net. The overlay
+rendered **one pill at a time**, rotating red → gold → gold → custom every
+`ALERT_ROTATE_SECONDS`; the pill was a single line (measured height < 48 px),
+title 19 px / weight 600 (down from 26 px / 700), a shiny gradient per tone, and
+wholly inside the photo panel — the calendar still started at the top gap
+(13 px), i.e. **the dashboard was not pushed down**, no scroll on either axis.
+Clearing the cache faded it out. Console clean apart from the reload notice (and
+a pre-existing favicon 404).
+
+**Deviations from spec** (all additive unless noted):
+- **Display redesigned from a top banner to a photo-panel overlay** (supersedes
+  the spec's "red full-width banner … overrides normal layout height"). The
+  banner was rejected on the wall for pushing every region down. Alerts now
+  float over the bottom of the photo column — the mirror of the clock over the
+  top — on a bottom-up scrim, `pointer-events:none`, so they take **no grid row
+  and never reflow anything**. The old `#banner` row, its `grid-template-areas`
+  entry and the `:has(.banner[hidden])` padding fix were all removed.
+- **One shiny pill at a time, rotating, single line.** Rather than stacking every
+  alert at once (rejected as cluttered and too loud), the overlay shows a single
+  pill and rotates through the active alerts one at a time, each on screen for
+  `ALERT_ROTATE_SECONDS` (7) before crossfading to the next. Each is one line
+  (title · text, ellipsised) in smaller, lighter type, and a glossy gradient with
+  a gentle brightness pulse (`alert-shine`) rather than an opacity blink. The
+  strip still fades in for `ALERT_SHOW_SECONDS` (60) once every
+  `ALERT_CYCLE_SECONDS` (1800) — 1 min in view every 30 — all three `.env`-tunable
+  and sent to the page via `/api/settings`. `prefers-reduced-motion` drops the
+  animation.
+- **Per-alert tone, not banner/chip levels.** Every record carries a `tone` —
+  `red` (closures + NWS warnings: severity in `ALERT_RED_SEVERITIES` or "warning"
+  in the event name), `gold` (advisories / watches, e.g. Heat Advisory, + trash),
+  or `custom` (a calendar's own colour). Red and gold are shiny gradients styled
+  in `alerts.css`; `custom` builds a gradient from the feed's hex. The earlier
+  `ALERT_BANNER_SEVERITIES` / `ALERT_COLOR_*` model is gone.
+- **NWS alerts are filtered, with a safety net.** Only alerts whose event name
+  matches `ALERT_WEATHER_KEYWORDS` (default thunderstorm, lightning, heat
+  advisory) show — but any alert at `ALERT_SAFETY_SEVERITIES` (Extreme/Severe)
+  qualifies too, so a Tornado / Flash Flood Warning is never silently hidden.
+  (The household asked for a short list; the safety net keeps a real emergency
+  from being suppressed.)
+- **Two families, derived vs fetched** (kept from the first pass). NWS alerts are
+  fetched: `fetchers/alerts.py` polls `/alerts/active?point=<WEATHER_LAT>,<LON>`
+  every 10 min (reusing `nws.get()` and the configured point — no separate
+  county/zone), replace-all into a new `weather_alerts` table, serve-stale via
+  `record_*`. Closures, trash and per-calendar alerts need **no fetcher and no
+  table** — they are *derived at request time* in `/api/alerts` from the events
+  cache via a new `alert_rules.py` (pure functions), the way `_highlights` is
+  derived in `/api/events`. **Read-time expiry** is retained: `/api/alerts` drops
+  any alert past its `expires`/`ends` (preferring the later of the two), so an
+  expiring warning vanishes on the next 5-min page poll, not only at the next
+  fetch.
+- **Closures fire on any weekday they cover, not first-day-only.** With the gentle
+  overlay (vs the loud banner) it is useful to show "No School" on each weekday of
+  a break, so the rule became "closure event covers today AND today is a weekday"
+  (weekend days are skipped — no-school is trivially true then). Still reuses
+  `event_styles.categorize` — **no second keyword list** — with
+  `CLOSURE_ALERT_CATEGORIES` (default `school, holiday`) picking the categories.
+- **Per-calendar alert colour.** A new `CAL_<KEY>_ALERT_COLOR` on any feed makes
+  every event from that feed covering today raise an alert in that colour — so a
+  "Birthdays" calendar can light the wall up on the day, configured entirely in
+  `.env` (mirrors "configure a calendar to show alerts with a colour").
+- **Countdown chips dropped.** The household asked for only the listed alert
+  types, so the `COUNTDOWN_<KEY>_*` mechanism from the first pass was removed
+  (config, rules and `.env` docs) — the per-calendar alert colour covers the
+  birthday case instead.
+- **Trash reminder** (kept): a pickup today always shows; tomorrow's shows once
+  the local clock passes `TRASH_REMINDER_HOUR` (5 pm). Matched by
+  `TRASH_REMINDER_KEYWORDS`, source-agnostic; always yellow.
+- **New `static/js/alerts.js` + `static/css/alerts.css`**; `main.js` wires
+  `startAlerts`; `/api/settings` now also carries the two alert timings. Alerts
+  are polled on the shared `DATA_REFRESH_SECONDS`; the NWS *fetch* stays 10 min.
 
 ---
 
