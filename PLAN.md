@@ -531,6 +531,108 @@ with no manual steps.
 
 ---
 
+## Phase 6 — Animated ambient background (time × weather × season)  [ ]
+
+**Goal:** Replace the flat page background with a living illustrated scene —
+trees, shrubs, a small house, and a mountain on the horizon — that continuously
+reflects the **time of day**, the **current weather**, and the **season**. It
+should feel like a window onto the outdoors, calm enough to sit behind the
+dashboard 24/7 without distracting from the panels.
+
+**Current state (keep as the baseline):** the background is `--bg: #08090c` (a
+near-black with a faint cool-blue tint; panels are `--panel: #101319`, accent
+`--accent: #6fb1ff`). The household *likes* this dark palette — it is the target
+look for the **Night** phase, and every other phase should feel like a natural
+departure from it, never a jarring bright wash behind the text.
+
+**Inputs — all already available, keep the Pi dumb.** The scene is rendered
+client-side (a rendering decision, allowed), but every *input* comes from data
+the server already serves, so nothing new is fetched from the Pi:
+- **Time of day** → derived in the browser from the clock plus **sunrise/sunset**
+  (already fetched into `weather_astro` via Open-Meteo and surfaced in the
+  weather API/panel). The dawn/dusk/twilight phases are offsets around those two
+  times, not fixed clock hours.
+- **Weather** → the current condition/icon from `/api/weather` (the frontend
+  already polls it via `startWeather`). `nws_icons.py` tokens
+  (clear/partly/cloudy/rain/thunder/snow/sleet/fog/wind/hot) map onto the scene's
+  weather animations.
+- **Season** → from the current date (northern hemisphere, Harrisburg NC).
+
+**The three dimensions.**
+
+Time-of-day phases (10), boundaries anchored to sun times, not fixed hours:
+`Twilight Dawn → Dawn → Sunrise → Morning → Noon → Afternoon → Sunset → Dusk →
+Twilight Dusk → Night`. Each sets the **sky gradient**, the **light/“golden
+hour” tint** on the scene, and the **celestial body** (sun position/height by
+day, moon + stars by night).
+
+Weather states (8), each an **animated** overlay on top of the current phase:
+`Clear · Cloudy · Sunny · Rainy · Windy · Thunderstorm · Lightning · Snow`.
+(Resolve overlaps when building: *Sunny* vs *Clear* — Clear-by-day reads as
+Sunny, Clear-by-night as starfield; *Lightning* is the flash effect that
+*Thunderstorm* also uses. Map these from the NWS tokens.)
+
+Seasons (4), setting the **foliage/palette** of the fixed scene features:
+`Spring · Summer · Autumn · Winter` (e.g. blossom vs full green vs orange-fall
+vs bare/snow-dusted).
+
+**Scene features (constant across all combinations):** a mountain on the
+horizon, a small house, trees, shrubs, and a ground plane — each re-skinned by
+season and re-lit by phase, with weather animating over the whole.
+
+**Worked example — “Autumn sunset with lightning” (use as an acceptance case):**
+- *Season = Autumn*: orange leaves on some branches, fallen leaves on the ground
+  and the house roof; occasional wind nudges a few leaves across the scene.
+- *Phase = Sunset*: golden-hour palette, the sun low and setting on the horizon.
+- *Weather = Lightning*: occasional lightning flashes in the background sky.
+
+**Design constraints (important — this runs forever on modest hardware):**
+- **Composed from layers, not 320 hand-drawn scenes.** 10 phases × 8 weather × 4
+  seasons is 320 combinations — build them as independent, combinable layers
+  (sky gradient by phase; celestial by phase; scene silhouette fixed; foliage
+  palette by season; weather animation overlay) so any combination just stacks.
+- **Cheap enough for the wall Pi (Raspberry Pi 3 B+, Chromium/labwc Wayland),
+  running 24/7.** Prefer SVG + CSS animations/transforms (GPU-friendly) over a
+  heavy per-frame `<canvas>` loop; cap particle counts; pause/relax animation at
+  Night. It must not peg the CPU or heat-throttle the Pi.
+- **Legibility first.** The dashboard panels and text must stay perfectly
+  readable over the scene — keep panels on their solid `--panel` fill and/or add
+  scrims; the scene is ambience, never foreground.
+- **No external assets.** Draw everything locally (like the weather glyphs in
+  `index.html`) — the page must never fetch images/CSS/JS from outside this
+  server.
+- Honour `prefers-reduced-motion` (drop or slow animations), and it must survive
+  the nightly 03:00 reload without leaking timers/memory.
+
+**Open decisions to settle at the start of the build:**
+1. **Where the scene lives.** Full-bleed behind the whole grid (panels stay
+   opaque, so the scene shows in gaps/around panels), or specifically as the
+   backdrop of the **photo column** (and how it coexists with / toggles against
+   the existing photo slideshow). This choice drives everything else.
+2. **Render tech:** layered inline SVG + CSS keyframes (leaning this way for Pi
+   perf) vs a light canvas. 
+3. **Phase-boundary math:** exact offsets that define Dawn/Dusk/Twilight around
+   sunrise/sunset.
+4. **Weather-token → animation mapping**, including the Sunny/Clear and
+   Lightning/Thunderstorm overlaps above.
+
+**Build (suggested decomposition):**
+- A `background.js` module + `background.css` (+ inline SVG defs), started from
+  `main.js` with the same `settings`, that reads clock + sun times + weather +
+  date and sets phase/weather/season classes on a scene container.
+- Layer 1 sky (phase gradient) → Layer 2 celestial (sun/moon/stars) → Layer 3
+  parallax scene silhouette (mountain/house/trees/shrubs/ground, season-skinned)
+  → Layer 4 weather animation (rain/snow/clouds/wind/lightning).
+- Build one vertical slice first (e.g. the worked example) to prove the layer
+  stack, then fill in phases/weather/seasons.
+
+**Done when:** the wall background visibly tracks real sunrise/sunset through the
+day, changes with the live weather, and shows the right seasonal foliage — with
+the dashboard panels still fully legible and the Pi staying cool, over a full
+day of unattended running.
+
+---
+
 ## Deferred / ideas backlog
 
 - ~~Photo source upgrade (shared album sync instead of manual folder drops)~~
