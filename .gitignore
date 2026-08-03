@@ -15,3 +15,6 @@ photos/*
 # Editor / OS
 /.vscode
 /.DS_Store
+
+# Playwright MCP scratch output (screenshots, snapshots, console logs)
+.playwright-mcp/

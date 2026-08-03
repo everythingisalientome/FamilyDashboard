@@ -61,6 +61,19 @@ CREATE TABLE IF NOT EXISTS weather_astro (
     uv_index    REAL
 );
 
+-- Active NWS weather alerts for the configured point. Replaced wholesale each
+-- fetch; /api/alerts also filters by expires_utc at read time, so an alert
+-- vanishes on the next page poll rather than waiting for the next fetch.
+CREATE TABLE IF NOT EXISTS weather_alerts (
+    id           TEXT PRIMARY KEY,     -- NWS alert id
+    event        TEXT NOT NULL,        -- "Winter Storm Warning"
+    severity     TEXT,                 -- Extreme|Severe|Moderate|Minor|Unknown
+    headline     TEXT,
+    description  TEXT,
+    onset_utc    TEXT,
+    expires_utc  TEXT
+);
+
 -- One row per fetch job, so the frontend and the Phase 5 admin page can tell
 -- fresh data from data that merely survived a failure.
 CREATE TABLE IF NOT EXISTS fetch_meta (

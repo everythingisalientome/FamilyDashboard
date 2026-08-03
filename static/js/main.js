@@ -1,6 +1,7 @@
 // Boot the display. Every piece degrades on its own: if /api/settings is
 // unreachable we fall back to these defaults rather than showing nothing.
 
+import { startAlerts } from './alerts.js';
 import { startCalendar } from './calendar.js';
 import { startClock } from './clock.js';
 import { startSlideshow } from './photos.js';
@@ -13,6 +14,9 @@ const DEFAULTS = {
   photo_list_refresh_seconds: 1800,
   nightly_reload_hour: 3,
   data_refresh_seconds: 300,
+  alert_show_seconds: 60,
+  alert_cycle_seconds: 1800,
+  alert_rotate_seconds: 7,
 };
 
 async function loadSettings() {
@@ -37,3 +41,4 @@ startSlideshow({
 });
 startCalendar(settings);
 startWeather(settings);
+startAlerts(settings);
