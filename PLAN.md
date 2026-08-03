@@ -387,9 +387,83 @@ surviving at least one source-page change without showing garbage.
 
 ---
 
-## Phase 5 — Manageability & deployment polish  [ ]
+## Phase 5 — Manageability & deployment polish  [~]
 
 **Goal:** The reason we moved off the old service: easy to manage long-term.
+
+**Pass 1 done (read-only status + manual refresh)** — verified 2026-08-03 in a
+live server + browser. Decided up front: the admin page edits `.env` and applies
+via a service restart, *not* a second DB config store — every setting is imported
+by value at process start (`from app.config import X` across 11 modules), so
+"env vs DB" is really "restart-to-apply vs a whole-app live-reconfig rewrite";
+for a one-household wall changed rarely, and with serve-stale making a restart
+invisible on the wall, restart-to-apply wins. Only the config-writing feature
+pays that cost — the status board, manual refresh, errors and stale-dot need no
+config store at all, so they shipped first.
+- `app/api/admin.py`: `GET /api/admin/status` (every `fetch_meta` job with a
+  computed staleness — 2× interval, or a fixed 26 h window for the nightly cron
+  calendars; configured-but-never-fetched feeds still get a row) and
+  `POST /api/admin/refresh/{weather|alerts|calendars|photos}` (fires the
+  fetcher's `run()` on a daemon thread, returns immediately, never blocks or
+  crashes the request). Refresh targets the 4 coarse `run()`s; the status board
+  reads the finer `fetch_meta` rows (weather splits into current/forecast/astro,
+  calendars into one row per feed).
+- `static/admin.html` + `css/admin.css` + `js/admin.js`, served at `/admin`
+  (explicit route in `main.py` since the extension-less path isn't a static
+  file). Plain table, per-fetcher refresh buttons, polls status every 5 s.
+- No changes to `config.py`, the scheduler, or any fetcher — purely additive.
+
+**Pass 2 done (NSSM deployment)** — the Windows-service half of the deploy spec.
+- `scripts/install-service.ps1` — idempotent installer (re-run to apply
+  changes): wraps `.venv\Scripts\python.exe -m uvicorn app.main:app` (no
+  `--reload`, single process so APScheduler isn't doubled) as an auto-start
+  service. Sets **`AppDirectory` = repo root** — the load-bearing detail, since
+  `load_dotenv()` reads `.env` from cwd, so a wrong working dir silently boots on
+  defaults. Restart-on-crash (2 s delay, 5 s throttle), stdout/stderr to
+  `data\logs\` with daily+10 MB rotation, and an inbound firewall rule for the
+  port. Requires an elevated shell and `nssm.exe` (PATH / `scripts\nssm.exe` /
+  `-Nssm`).
+- `scripts/uninstall-service.ps1` — stop + remove service and firewall rule;
+  leaves code/venv/.env/logs/cache intact.
+- `docs/deployment.md` — prerequisites, install, per-setting rationale, verify,
+  operations (logs/restart/update/port), uninstall, the manual NSSM equivalents,
+  and troubleshooting. README's Deployment section now points here.
+- Note for the future admin "Save & restart": it is just `nssm restart
+  FamilyDashboard`, documented in the ops section.
+
+**Pass 3 done (admin logs + source URLs + orphan cleanup)** — verified
+2026-08-03 in a live server + browser.
+- **App-owned rotating log.** New `app/logging_setup.py` attaches a console +
+  `TimedRotatingFileHandler` (roll at *local* midnight, `backupCount =
+  LOG_RETENTION_DAYS`) to the root logger, writing `data/logs/dashboard.log`.
+  Captured however the app is launched (dev or service) and distinct from NSSM's
+  stdout capture. `main.py` now calls `configure_logging()` in place of
+  `basicConfig`. Config: `LOG_DIR` / `LOG_LEVEL` / `LOG_RETENTION_DAYS` (`.env`).
+  Only the app's own `dashboard.*` (+ propagating `httpx`/`apscheduler`) lines
+  land here; uvicorn access logs don't propagate, so the 5 s admin poll doesn't
+  flood it.
+- **Log endpoints:** `GET /api/admin/logs?lines=N` (tail of today's file),
+  `GET /api/admin/logs/files` (current + rotated, size/mtime, newest first),
+  `GET /api/admin/logs/download?name=` (attachment; whitelisted to real log
+  files — `is_log_file` + resolved-parent check refuses `../` traversal and
+  non-log files like the DB).
+- **Source URLs on the status board.** Each job now carries the URL/point it
+  pulls from (feed ICS URL, NWS points/alerts, Open-Meteo, the photos album).
+  These are capability URLs; showing them fits the LAN-only model (noted in
+  code + the admin page is not for off-LAN exposure).
+- **Orphan cleanup.** A `fetch_meta` row with no configured source (e.g. the
+  leftover `events:bday` from earlier testing) is flagged `orphaned` and gets a
+  "✕ clear" button → `DELETE /api/admin/jobs/{job}` (refuses active jobs with
+  409; also drops a removed feed's leftover `events` rows). The stale
+  `events:bday` row was cleared.
+- Frontend: `admin.html/js/css` gained a Source column, the orphan tag + remove
+  button, and a Logs panel (auto-scrolling tail + downloads list).
+- `deployment.md` now documents the two log streams; `.env.example` gained the
+  Logging section.
+
+**Still to build:** dashboard stale-dot; feed add/remove + `.env` write + the
+"Save & restart" button; **Pi kiosk checklist** (the other half of the deploy
+spec — Raspberry Pi OS, auto-login, Chromium kiosk, blanking off).
 
 **Already in place** (reuse, don't rebuild):
 - Adding/removing a feed already works without code: set `CAL_<KEY>_URL` in

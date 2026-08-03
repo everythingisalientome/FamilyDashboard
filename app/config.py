@@ -45,6 +45,26 @@ PHOTOS_DIR: Path = BASE_DIR / "photos"
 DATA_DIR: Path = BASE_DIR / "data"
 DB_PATH: Path = DATA_DIR / "dashboard.db"
 
+# --- Logging ---------------------------------------------------------------
+# The app writes its own rotating log so the startup/fetch/admin lines are
+# captured no matter how it is launched (dev server or NSSM service) and can be
+# shown on the admin page. This is separate from NSSM's stdout capture.
+
+#: Directory the log files live in. Defaults under data/ (git-ignored). Override
+#: with an absolute path in .env to send logs elsewhere.
+_LOG_DIR_RAW = _env_str("LOG_DIR", "")
+LOG_DIR: Path = Path(_LOG_DIR_RAW) if _LOG_DIR_RAW else DATA_DIR / "logs"
+
+#: Base name of the active log file. Rotated files get a ``.YYYY-MM-DD`` suffix.
+LOG_FILE_NAME: str = "dashboard.log"
+
+#: Root log level (DEBUG/INFO/WARNING/ERROR). Anything unrecognised → INFO.
+LOG_LEVEL: str = _env_str("LOG_LEVEL", "INFO").upper()
+
+#: How many past daily files to keep. The active file rolls at local midnight;
+#: files older than this many days are pruned automatically.
+LOG_RETENTION_DAYS: int = _env_int("LOG_RETENTION_DAYS", 14)
+
 # --- Display ---------------------------------------------------------------
 
 DISPLAY_TZ_NAME: str = "America/New_York"

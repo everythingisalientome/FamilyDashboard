@@ -1,0 +1,166 @@
+/* Standalone admin page — not the wall display. A plain, legible dark form
+   meant to be opened from a phone or laptop on the LAN. */
+
+:root {
+  --bg: #14171c;
+  --panel: #1c2129;
+  --line: #2b323d;
+  --text: #e6e9ee;
+  --muted: #8b94a3;
+  --fresh: #51cf66;
+  --stale: #ff6b6b;
+  --unknown: #6b7280;
+  --accent: #74c0fc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.admin {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.admin-head h1 { margin: 0 0 4px; font-size: 1.5rem; }
+.sub { margin: 0 0 8px; color: var(--muted); }
+.poll-note { margin-left: 6px; font-variant-numeric: tabular-nums; }
+
+h2 { margin: 28px 0 6px; font-size: 1.05rem; }
+.hint { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+
+.refresh-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+
+button.refresh {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font: inherit;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+button.refresh:hover { border-color: var(--accent); }
+button.refresh:disabled { opacity: 0.55; cursor: default; }
+
+table.status {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.status th, .status td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.status th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.status tr:last-child td { border-bottom: none; }
+
+.job-cell { display: flex; align-items: center; gap: 9px; }
+.dot {
+  flex: none;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--unknown);
+}
+.dot.fresh { background: var(--fresh); }
+.dot.stale { background: var(--stale); }
+.job-name { font-weight: 600; }
+.job-id { display: block; color: var(--muted); font-size: 0.78rem; }
+
+.muted { color: var(--muted); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.err {
+  color: var(--stale);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+td.nowrap { white-space: nowrap; }
+
+/* Source URL cell — truncate long capability URLs, full text on hover. */
+.src-cell { max-width: 320px; }
+.src-cell a {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  font-size: 0.82rem;
+}
+
+/* Orphaned rows: a removed feed's leftover status row. */
+tr.orphaned { background: rgba(255, 107, 107, 0.06); }
+.tag-orphan {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ffb4b4;
+  background: rgba(255, 107, 107, 0.16);
+}
+button.remove {
+  display: inline-block;
+  margin-top: 5px;
+  background: transparent;
+  color: var(--stale);
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+button.remove:hover { background: rgba(255, 107, 107, 0.15); }
+button.remove:disabled { opacity: 0.55; cursor: default; }
+
+/* Log panel */
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.log-view {
+  margin: 0;
+  height: 340px;
+  overflow: auto;
+  background: #0e1116;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #cdd3dc;
+}
+.downloads-h { margin: 20px 0 8px; font-size: 0.95rem; }
+.log-files { margin: 0; padding-left: 18px; }
+.log-files li { margin: 3px 0; font-size: 0.88rem; }
+
+.foot { margin-top: 28px; }
+.foot a, .admin a { color: var(--accent); }
