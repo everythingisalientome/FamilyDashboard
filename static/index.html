@@ -78,6 +78,10 @@
 
   </div>
 
+  <!-- Subtle stale-data indicator: a quiet dot in the corner when a feed's
+       cache has gone stale (> ~2x its refresh interval). Hidden when all fresh. -->
+  <div id="stale-dot" class="stale-dot" aria-hidden="true" hidden></div>
+
   <!-- Weather glyphs. Drawn locally so the page never loads an NWS image. -->
   <svg class="wx-defs" aria-hidden="true" focusable="false">
     <defs>

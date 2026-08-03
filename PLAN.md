@@ -392,10 +392,9 @@ surviving at least one source-page change without showing garbage.
 **Goal:** The reason we moved off the old service: easy to manage long-term.
 
 **Remaining in this phase** (deployment is live; these are the open items):
-- [ ] **Dashboard stale-dot** — a subtle indicator on the wall when any feed is
-  older than ~2× its refresh interval. The staleness math + `fetch_meta` reads
-  already exist in `app/api/admin.py` (`_stale_after`, the per-job `stale` flag);
-  this is surfacing the same signal on the dashboard, not new tracking.
+- [x] **Dashboard stale-dot** — done (Pass 5). The staleness math moved from
+  `admin.py` into `app/staleness.py` (shared) and a subtle amber corner dot on
+  the wall lights when any *active* feed is stale.
 - [ ] **Feed editing + "Save & restart" from `/admin`** — write feeds/tunables
   back to `.env` and apply via a service restart (just `nssm restart
   FamilyDashboard`, already documented). Editable settings write to `.env`, never
@@ -485,8 +484,27 @@ preset user/password + SSH + WiFi (known credentials, headless). Kiosk is
 as `docs/deployment.md` section 7, including the SSH-paste gotchas (indented
 heredoc terminators, long lines split mid-paste) and the base64-blob workaround.
 
-**Still to build:** dashboard stale-dot; feed add/remove + `.env` write + the
-"Save & restart" button. (Deployment — Windows service + Pi kiosk — is now done.)
+**Pass 5 done (dashboard stale-dot)** — verified 2026-08-03 in a live server +
+browser. The staleness math (`interval_for`, `stale_after`, `age_seconds`,
+`feeds_by_job`, `active_jobs`) moved out of `app/api/admin.py` into a shared
+`app/staleness.py` (which also brought admin.py back under the ~200-line rule);
+admin now imports it, so the board and the dot can't disagree on "stale."
+- `app/staleness.py` adds `summary()` → `{stale, stale_jobs, checked}` over only
+  *active* jobs (an orphaned removed-feed row can't light the wall; a
+  never-succeeded active job counts as stale). `GET /api/staleness` (new
+  `app/api/status.py` router) serves it.
+- Frontend: `#stale-dot` in `index.html`, `static/js/staleness.js`
+  (`startStaleness`, wired in `main.js`) polls `/api/staleness` on
+  `data_refresh_seconds` and toggles a small, dim, slowly-pulsing amber dot in
+  the bottom-right — `position:fixed`, `pointer-events:none`, so zero layout
+  impact; `prefers-reduced-motion` drops the pulse. Any fetch error just hides
+  the dot (the wall never nags). Verified: with the dev cache hours old the dot
+  showed and its tooltip listed exactly the stale jobs, while the two calendar
+  feeds (inside their 26 h window) were correctly not flagged.
+
+**Still to build:** feed add/remove + `.env` write + the "Save & restart" button
+(the only remaining Phase 5 item). (Deployment — Windows service + Pi kiosk — and
+the stale-dot are done.)
 
 **Already in place** (reuse, don't rebuild):
 - Adding/removing a feed already works without code: set `CAL_<KEY>_URL` in

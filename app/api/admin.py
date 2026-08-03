@@ -11,13 +11,12 @@ page is not meant to be exposed off the LAN.
 
 import logging
 import threading
-from datetime import datetime, timezone
 from typing import Any, Callable
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
-from app import config, logging_setup
+from app import config, logging_setup, staleness
 from app.db import connect
 from app.envelope import envelope
 from app.fetchers import alerts, calendars, photos, weather
@@ -35,55 +34,11 @@ _FETCHERS: dict[str, Callable[[], None]] = {
     "photos": photos.run,
 }
 
-#: Calendar jobs run on a nightly cron, not an interval, so "2x interval" is
-#: meaningless — hold them fresh for a day plus slack before flagging stale.
-_CALENDAR_STALE_SECONDS = 26 * 60 * 60
-
 _MAX_TAIL_LINES = 5000
 
-
-def _interval_for(job: str) -> int | None:
-    """Configured refresh interval (seconds) for a fetch_meta job, if any."""
-    if job.startswith("weather:"):
-        return config.WEATHER_REFRESH_SECONDS
-    if job.startswith("alerts:"):
-        return config.ALERTS_REFRESH_SECONDS
-    if job == "photos":
-        return config.PHOTO_SYNC_REFRESH_SECONDS
-    return None  # events:* are cron-scheduled — see _stale_after
-
-
-def _stale_after(job: str) -> int:
-    """Age (seconds) beyond which a job's last-good data counts as stale."""
-    interval = _interval_for(job)
-    return _CALENDAR_STALE_SECONDS if interval is None else interval * 2
-
-
-def _age_seconds(iso: str | None) -> float | None:
-    """Seconds since ``iso`` (a stored UTC timestamp), or None if unset/bad."""
-    if not iso:
-        return None
-    try:
-        then = datetime.fromisoformat(iso)
-    except ValueError:
-        return None
-    if then.tzinfo is None:
-        then = then.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - then).total_seconds()
-
-
-def _feeds_by_job() -> dict[str, Any]:
-    """Map each configured feed's job id to its CalendarFeed."""
-    return {calendars.job_name(feed): feed for feed in config.CALENDAR_FEEDS}
-
-
-def _active_jobs(feed_jobs: dict[str, Any]) -> set[str]:
-    """Jobs that a currently-configured source is expected to produce."""
-    active = {"weather:current", "weather:forecast", "weather:astro", "alerts:weather"}
-    if config.PHOTOS_ALBUM_URL:
-        active.add("photos")
-    active.update(feed_jobs)
-    return active
+# Staleness math (interval_for / stale_after / age_seconds / feeds_by_job /
+# active_jobs) lives in app.staleness, shared with the dashboard stale-dot so
+# both agree on what "stale" means.
 
 
 def _source_url(job: str, feed_jobs: dict[str, Any]) -> str:
@@ -115,8 +70,8 @@ def admin_status() -> dict[str, Any]:
         ).fetchall()
     meta: dict[str, dict[str, Any]] = {r["job"]: dict(r) for r in rows}
 
-    feed_jobs = _feeds_by_job()
-    active = _active_jobs(feed_jobs)
+    feed_jobs = staleness.feeds_by_job()
+    active = staleness.active_jobs(feed_jobs)
 
     # A configured feed that has never fetched yet still deserves a row.
     for job, feed in feed_jobs.items():
@@ -133,8 +88,8 @@ def admin_status() -> dict[str, Any]:
     jobs: list[dict[str, Any]] = []
     for job in sorted(meta):
         row = meta[job]
-        age = _age_seconds(row["last_success_utc"])
-        stale_after = _stale_after(job)
+        age = staleness.age_seconds(row["last_success_utc"])
+        stale_after = staleness.stale_after(job)
         feed = feed_jobs.get(job)
         jobs.append(
             {
@@ -148,7 +103,7 @@ def admin_status() -> dict[str, Any]:
                 "age_seconds": age,
                 "stale_after_seconds": stale_after,
                 "stale": age is None or age > stale_after,
-                "interval_seconds": _interval_for(job),
+                "interval_seconds": staleness.interval_for(job),
             }
         )
 
@@ -190,8 +145,8 @@ def admin_delete_job(job: str) -> dict[str, Any]:
     fetch, so deleting it is pointless). For an orphaned ``events:<key>`` it also
     drops that feed's leftover events, so a removed calendar fully disappears.
     """
-    feed_jobs = _feeds_by_job()
-    if job in _active_jobs(feed_jobs):
+    feed_jobs = staleness.feeds_by_job()
+    if job in staleness.active_jobs(feed_jobs):
         raise HTTPException(
             status_code=409, detail=f"{job} is an active job, not orphaned"
         )

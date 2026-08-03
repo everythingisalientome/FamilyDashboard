@@ -184,3 +184,33 @@ html, body {
   color: #dfe4ec;                 /* a touch dimmer than the time */
 }
 
+/* Stale-data indicator: a deliberately quiet amber dot in the bottom-right
+   corner, shown only when a feed's cache has gone stale. The wall must hint,
+   never nag — so it is small, dim, and slowly pulsing. */
+.stale-dot {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e0a423;            /* muted amber */
+  box-shadow: 0 0 6px 1px rgba(224, 163, 35, 0.5);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 50;
+  animation: stale-pulse 3s ease-in-out infinite;
+}
+
+/* The [hidden] attribute must win over position:fixed's implied display. */
+.stale-dot[hidden] { display: none; }
+
+@keyframes stale-pulse {
+  0%, 100% { opacity: 0.28; }
+  50%      { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stale-dot { animation: none; }
+}
+

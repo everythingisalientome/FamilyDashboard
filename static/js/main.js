@@ -6,6 +6,7 @@ import { startCalendar } from './calendar.js';
 import { startClock } from './clock.js';
 import { startSlideshow } from './photos.js';
 import { scheduleNightlyReload } from './reload.js';
+import { startStaleness } from './staleness.js';
 import { startWeather } from './weather.js';
 
 const DEFAULTS = {
@@ -42,3 +43,4 @@ startSlideshow({
 startCalendar(settings);
 startWeather(settings);
 startAlerts(settings);
+startStaleness(settings);
