@@ -65,6 +65,32 @@ function Invoke-Nssm {
     if ($LASTEXITCODE -ne 0) { throw "nssm $($Args -join ' ') failed (exit $LASTEXITCODE)" }
 }
 
+function Wait-ServiceRunning {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [int]$TimeoutSeconds = 30
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+        if (-not $service) {
+            Start-Sleep -Milliseconds 300
+            continue
+        }
+        if ($service.Status -eq [System.ServiceProcess.ServiceControllerStatus]::Running) {
+            return $true
+        }
+        if ($service.Status -eq [System.ServiceProcess.ServiceControllerStatus]::Stopped) {
+            return $false
+        }
+        Start-Sleep -Milliseconds 500
+    }
+
+    $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+    return ($service -and $service.Status -eq [System.ServiceProcess.ServiceControllerStatus]::Running)
+}
+
 # --- Ensure the log directory ----------------------------------------------
 $logDir = Join-Path $repoRoot "data\logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -120,7 +146,16 @@ if (-not $SkipFirewall) {
 if ($NoStart) {
     Write-Host "Configured but not started (-NoStart). Start it with: nssm start $ServiceName"
 } else {
-    Invoke-Nssm start $ServiceName
+    & $Nssm start $ServiceName *> $null
+    if ($LASTEXITCODE -ne 0) {
+        if (-not (Wait-ServiceRunning -Name $ServiceName -TimeoutSeconds 30)) {
+            throw "nssm start $ServiceName failed (exit $LASTEXITCODE)"
+        }
+        Write-Host "Service reached RUNNING despite non-zero nssm start exit code; continuing."
+    } elseif (-not (Wait-ServiceRunning -Name $ServiceName -TimeoutSeconds 30)) {
+        throw "Service '$ServiceName' did not reach RUNNING within timeout."
+    }
+
     $ip = (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
         Where-Object { $_.IPAddress -notlike "169.*" -and $_.IPAddress -ne "127.0.0.1" } |
         Select-Object -First 1 -ExpandProperty IPAddress)
