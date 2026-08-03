@@ -5,17 +5,17 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import scheduler
 from app.api import router as api_router
 from app.config import CALENDAR_FEEDS, DATA_DIR, PHOTOS_DIR, STATIC_DIR
 from app.db import init_db
+from app.logging_setup import configure_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+# Configure logging before anything else so startup lines land in the log file.
+configure_logging()
 log = logging.getLogger("dashboard")
 
 # Created at import time because StaticFiles refuses to mount a missing folder.
@@ -50,6 +50,14 @@ app = FastAPI(
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# The static mount serves everything else, but "/admin" (no extension) needs an
+# explicit route or the SPA-less mount can't find it. Registered before the "/"
+# mount so the catch-all doesn't swallow it.
+@app.get("/admin")
+def admin_page() -> FileResponse:
+    return FileResponse(STATIC_DIR / "admin.html")
 
 
 # Order matters: /api and /photos must be registered before the catch-all

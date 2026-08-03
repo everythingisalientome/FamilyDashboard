@@ -15,6 +15,20 @@ photos/*
 # Editor / OS
 /.vscode
 /.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # Playwright MCP scratch output (screenshots, snapshots, console logs)
 .playwright-mcp/
+
+# NSSM — the binary/zip you download per docs/deployment.md, however you place
+# it (scripts\nssm.exe, or an extracted win32\/win64\ folder). Never committed.
+nssm.exe
+nssm-*.zip
+scripts/win32/
+scripts/win64/
+
+# Stray log files (the app's own logs already live under the ignored data/logs/)
+*.log

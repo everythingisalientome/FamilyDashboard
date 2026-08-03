@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Admin</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <main class="admin">
+    <header class="admin-head">
+      <h1>Family Dashboard — Admin</h1>
+      <p class="sub">
+        Feed health and manual refresh. LAN-only, no login.
+        <span id="poll-note" class="poll-note"></span>
+      </p>
+    </header>
+
+    <section aria-labelledby="refresh-h">
+      <h2 id="refresh-h">Refresh now</h2>
+      <p class="hint">
+        Triggers a fetch immediately. It runs in the background; the table below
+        updates on its own once the fetch finishes.
+      </p>
+      <div id="refresh-buttons" class="refresh-buttons"></div>
+    </section>
+
+    <section aria-labelledby="status-h">
+      <h2 id="status-h">Feed status</h2>
+      <table class="status">
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Source</th>
+            <th>Last success</th>
+            <th>Last attempt</th>
+            <th>Interval</th>
+            <th>Last error</th>
+          </tr>
+        </thead>
+        <tbody id="status-rows">
+          <tr><td colspan="6" class="muted">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="logs-h">
+      <h2 id="logs-h">Logs</h2>
+      <p class="hint">
+        Today's log (<span id="log-file" class="mono">—</span>). It rotates at
+        midnight; older days are downloadable below.
+      </p>
+      <div class="log-toolbar">
+        <label><input type="checkbox" id="log-follow" checked> Auto-scroll to newest</label>
+        <span id="log-meta" class="muted"></span>
+      </div>
+      <pre id="log-view" class="log-view muted">Loading…</pre>
+
+      <h3 class="downloads-h">Download log files</h3>
+      <ul id="log-files" class="log-files"><li class="muted">Loading…</li></ul>
+    </section>
+
+    <p class="foot"><a href="/">← Back to the wall display</a></p>
+  </main>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

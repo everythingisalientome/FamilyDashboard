@@ -42,9 +42,16 @@ simplest thing that runs on the LAN and is easy to change.
 - **Photos** — a slideshow from the local `photos/` folder, optionally synced
   from a public Google Photos shared album (no Google login required).
 - **Upcoming ticker** — a one-line strip of the next week's keyword highlights.
+- **Alerts** — a shiny pill along the bottom of the photo panel rotates through
+  active NWS weather alerts, school closures, trash reminders and per-calendar
+  alerts, without ever pushing the layout.
+- **Admin page** — `/admin` (LAN-only, no login) lists every feed with its
+  last-fetch time, status, source URL and recent errors, a button to refresh any
+  fetcher on demand, and the app log (view the current day, download older days).
 - **Resilience** — every fetcher is independent and swallows its own errors;
   one dead feed never blanks the others or the page. The browser reloads itself
-  nightly to shed any leaks.
+  nightly to shed any leaks. The app keeps a rotating daily log under
+  `data/logs/`.
 
 ## Stack
 
@@ -94,38 +101,54 @@ commented list). Highlights:
 | `PHOTO_INTERVAL_SECONDS` | Seconds each photo shows in the slideshow. |
 | `EVENT_STYLE_<KEY>_KEYWORDS` / `_COLOR` / `_ORDER` | Extend/retune the colour categories. |
 | `HIGHLIGHT_KEYWORDS`, `HIGHLIGHT_DAYS` | Which upcoming events feed the ticker, and how far ahead. |
+| `LOG_DIR`, `LOG_LEVEL`, `LOG_RETENTION_DAYS` | Where the rotating app log is written, its level, and how many past days to keep. |
 
 `.env` is git-ignored — it holds capability URLs (calendar/photo share links)
-that anyone with them can read, so it is never committed.
+that anyone with them can read, so it is never committed. Feed health and recent
+errors are visible at **`/admin`**; changes still take effect on restart.
 
 ## Project layout
 
 ```
 app/
-  main.py            FastAPI entrypoint (serves /api, /photos, /)
+  main.py            FastAPI entrypoint (serves /api, /admin, /photos, /)
   config.py          all settings, read from .env with sensible defaults
   scheduler.py       APScheduler wiring for the fetch jobs
   db.py              SQLite schema + cache helpers
+  logging_setup.py   root logging + the daily-rotating app log
   event_styles.py    keyword → colour category engine
-  api/               /api/* endpoints (events, weather, photos, settings)
+  api/               /api/* endpoints (events, weather, photos, settings, admin)
   fetchers/          one module per data source (calendars, weather, photos, ...)
-static/              the single-page dashboard (HTML/CSS/JS, no build)
+static/              the dashboard + the /admin page (HTML/CSS/JS, no build)
 photos/              slideshow images (git-ignored; drop files or sync an album)
-data/                SQLite cache (git-ignored, created on first run)
+data/                SQLite cache + logs/ (git-ignored, created on first run)
+scripts/             NSSM install/uninstall PowerShell scripts
+docs/                deployment guide
 PLAN.md              phased roadmap and per-phase build notes
 ```
 
 ## Deployment
 
-Intended to run as a Windows service via [NSSM](https://nssm.cc/), with the Pi
-booting straight into `chromium --kiosk http://<server-ip>:8000/`. The detailed
-service/kiosk checklist is tracked in **[PLAN.md](PLAN.md)** (Phase 5).
+Runs as an always-on Windows service via [NSSM](https://nssm.cc/), with the Pi
+booting straight into `chromium --kiosk http://<server-ip>:8000/`. From an
+elevated PowerShell in the project root:
+
+```powershell
+.\scripts\install-service.ps1
+```
+
+See **[docs/deployment.md](docs/deployment.md)** for prerequisites (NSSM),
+options, logs, updates, and the manual-install equivalents. The Pi kiosk
+checklist is tracked in **[PLAN.md](PLAN.md)** (Phase 5).
 
 ## Roadmap
 
 Built in phases — see **[PLAN.md](PLAN.md)** for the full plan and the build
-notes for each phase. Phases 1–2 (the dashboard, calendars, weather, photos)
-are done; alerts, a scrape/LLM pipeline, and deployment polish are next.
+notes for each phase. Phases 1–3 (the dashboard, calendars, weather, photos,
+alerts) are done, and Phase 5 deployment polish is underway (Windows service,
+admin page with feed health + logs). Remaining: the Phase 4 scrape/LLM pipeline,
+and finishing Phase 5 (dashboard stale-dot, feed editing from the admin page,
+Pi kiosk checklist).
 
 ---
 
