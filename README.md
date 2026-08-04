@@ -41,6 +41,12 @@ simplest thing that runs on the LAN and is easy to change.
   Open-Meteo and a locally-computed moon phase; a multi-day outlook strip.
 - **Photos** — a slideshow from the local `photos/` folder, optionally synced
   from a public Google Photos shared album (no Google login required).
+- **Ambient background** — a living illustrated scene (sky, sun/moon/stars,
+  mountain, house, trees) behind the whole dashboard that tracks the **time of
+  day** (anchored to real sunrise/sunset), the **current weather** (rain, snow,
+  wind, thunderstorm/lightning, clouds, fog) and the **season**. Drawn locally as
+  layered SVG + CSS, with optional pre-rendered art per season×phase; the panels
+  are frosted glass so it shows through without hurting legibility.
 - **Upcoming ticker** — a one-line strip of the next week's keyword highlights.
 - **Alerts** — a shiny pill along the bottom of the photo panel rotates through
   active NWS weather alerts, school closures, trash reminders and per-calendar
@@ -122,7 +128,7 @@ app/
 static/              the dashboard + the /admin page (HTML/CSS/JS, no build)
 photos/              slideshow images (git-ignored; drop files or sync an album)
 data/                SQLite cache + logs/ (git-ignored, created on first run)
-scripts/             NSSM install/uninstall PowerShell scripts
+scripts/             NSSM install/uninstall + background-image compressor
 docs/                deployment guide
 PLAN.md              phased roadmap and per-phase build notes
 ```
@@ -145,10 +151,11 @@ checklist is tracked in **[PLAN.md](PLAN.md)** (Phase 5).
 
 Built in phases — see **[PLAN.md](PLAN.md)** for the full plan and the build
 notes for each phase. Phases 1–3 (the dashboard, calendars, weather, photos,
-alerts) are done, and Phase 5 deployment polish is underway (Windows service,
-admin page with feed health + logs). Remaining: the Phase 4 scrape/LLM pipeline,
-and finishing Phase 5 (dashboard stale-dot, feed editing from the admin page,
-Pi kiosk checklist).
+alerts) and Phase 6 (the animated ambient background) are done, and Phase 5
+deployment polish is largely complete (Windows service, Pi kiosk, admin page
+with feed health + logs, and the dashboard stale-dot). Remaining: the Phase 4
+scrape/LLM pipeline, and the last Phase 5 item — feed add/remove and a
+"Save & restart" from the admin page.
 
 ---
 

@@ -2,6 +2,7 @@
 // unreachable we fall back to these defaults rather than showing nothing.
 
 import { startAlerts } from './alerts.js';
+import { startBackground } from './background.js';
 import { startCalendar } from './calendar.js';
 import { startClock } from './clock.js';
 import { startSlideshow } from './photos.js';
@@ -44,3 +45,4 @@ startCalendar(settings);
 startWeather(settings);
 startAlerts(settings);
 startStaleness(settings);
+startBackground(settings);

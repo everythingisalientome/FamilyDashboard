@@ -69,7 +69,8 @@
   gap: 3px;
   padding: 8px 5px;
   border-radius: 11px;
-  background: #151922;
+  background: var(--box-glass);          /* near-transparent: shows the panel frost */
+  border: 1px solid var(--box-edge);     /* hairline keeps it readable as a box */
 }
 
 .forecast-label {

@@ -1,0 +1,368 @@
+/* Ambient background — a living scene behind the dashboard grid.
+   Composed from independent layers so any (time-phase x weather x season)
+   combination just stacks; nothing is a hand-drawn one-off. Built for the
+   wall Pi (Pi 3 B+, Chromium/Wayland) running 24/7: GPU-friendly CSS
+   transforms and opacity only, small particle layers, no per-frame canvas.
+   Panels stay opaque (see style.css), so this shows in the padding frame and
+   the gaps between panels. */
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;                 /* behind .dashboard (z-index: 1) */
+  overflow: hidden;
+  pointer-events: none;       /* ambience only, never interactive */
+  background: var(--bg);      /* fallback before the sky paints */
+}
+
+.scene > * { position: absolute; }
+
+/* ---------- Layer 1: sky (gradient by time-of-day phase) --------------- */
+
+.sky {
+  inset: 0;
+  transition: background 4s ease;   /* phases cross-fade slowly */
+  /* default (night) — matches the dashboard's near-black target look */
+  background: linear-gradient(to bottom, #05060b 0%, #0a0d15 60%, #10141d 100%);
+}
+
+.scene.phase-night         .sky { background: linear-gradient(to bottom, #05060b 0%, #0a0d15 60%, #10141d 100%); }
+.scene.phase-twilight-dawn .sky { background: linear-gradient(to bottom, #0a0f28 0%, #1b1c3e 62%, #34264a 100%); }
+.scene.phase-dawn          .sky { background: linear-gradient(to bottom, #1a1a44 0%, #4a2f56 60%, #93564f 100%); }
+.scene.phase-sunrise       .sky { background: linear-gradient(to bottom, #274076 0%, #9a5a50 62%, #d98a54 100%); }
+.scene.phase-morning       .sky { background: linear-gradient(to bottom, #2f5686 0%, #5c86b4 62%, #9cc0dd 100%); }
+.scene.phase-noon          .sky { background: linear-gradient(to bottom, #2b5f97 0%, #4f8bc0 60%, #93bfe2 100%); }
+.scene.phase-afternoon     .sky { background: linear-gradient(to bottom, #325a8a 0%, #6090ba 62%, #a6c6de 100%); }
+.scene.phase-sunset        .sky { background: linear-gradient(to bottom, #26305e 0%, #9a4f43 60%, #dd7d44 100%); }
+.scene.phase-dusk          .sky { background: linear-gradient(to bottom, #131338 0%, #43315c 60%, #7c4a54 100%); }
+.scene.phase-twilight-dusk .sky { background: linear-gradient(to bottom, #090c22 0%, #191a38 62%, #281f3c 100%); }
+
+/* ---------- Layer 2: celestial (sun / moon / stars) -------------------- */
+
+/* JS sets --sun-x/--sun-y and --moon-x/--moon-y from the sun-time arc. */
+.sun, .moon {
+  left: var(--sun-x, 50%);
+  bottom: var(--sun-y, 6%);
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  transform: translate(-50%, 50%);
+  opacity: 0;
+  transition: opacity 3s ease;
+}
+
+.sun {
+  background: radial-gradient(circle, #fff6d8 0%, #ffe08a 45%, rgba(255, 210, 120, 0) 72%);
+  box-shadow: 0 0 90px 30px rgba(255, 214, 130, 0.45);
+}
+
+.moon {
+  left: var(--moon-x, 50%);
+  bottom: var(--moon-y, 6%);
+  width: 74px;
+  height: 74px;
+  background: radial-gradient(circle at 38% 38%, #f4f6ff 0%, #cdd6ea 55%, #9aa6c4 100%);
+  box-shadow: 0 0 40px 8px rgba(200, 214, 245, 0.35);
+}
+
+/* Sun is out through the daylight phases; low + reddened near the horizon. */
+.scene.phase-sunrise .sun,
+.scene.phase-sunset  .sun { opacity: 1; filter: saturate(1.3) brightness(1.02); }
+.scene.phase-morning .sun,
+.scene.phase-noon    .sun,
+.scene.phase-afternoon .sun { opacity: 1; }
+
+/* Moon rides the night phases. */
+.scene.phase-night .moon,
+.scene.phase-twilight-dusk .moon,
+.scene.phase-twilight-dawn .moon,
+.scene.phase-dusk .moon,
+.scene.phase-dawn .moon { opacity: 0.95; }
+
+/* Starfield: a cheap two-layer radial-gradient dot pattern, no DOM nodes. */
+.stars {
+  inset: 0;
+  opacity: 0;
+  transition: opacity 3s ease;
+  background-image:
+    radial-gradient(1.4px 1.4px at 20% 18%, #ffffff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 68% 12%, #dfe6ff 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 42% 32%, #ffffff 50%, transparent 51%),
+    radial-gradient(1.1px 1.1px at 82% 26%, #cfe0ff 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 12% 40%, #ffffff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 55% 22%, #eef3ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 90% 38%, #ffffff 50%, transparent 51%),
+    radial-gradient(1.1px 1.1px at 33% 8%, #dbe6ff 50%, transparent 51%);
+  background-repeat: no-repeat;
+  animation: star-twinkle 6s ease-in-out infinite;
+}
+
+.scene.phase-night .stars { opacity: 0.9; }
+.scene.phase-twilight-dusk .stars,
+.scene.phase-twilight-dawn .stars { opacity: 0.6; }
+.scene.phase-dusk .stars,
+.scene.phase-dawn .stars { opacity: 0.25; }
+
+@keyframes star-twinkle { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.55; } }
+
+/* ---------- Layer 3: landscape (fixed silhouette, seasonal skin) ------- */
+
+.landscape {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 46%;
+}
+
+/* Seasonal palette — one set of vars drives every foliage fill. */
+.scene.season-summer { --leaf: #3f7d3a; --leaf-dark: #2f5f2c; --ground: #3b5730; --shrub: #396b34; --trunk: #563c28; --mountain: #384a5a; }
+.scene.season-spring { --leaf: #79b56a; --leaf-dark: #5c9a52; --ground: #486a3a; --shrub: #6aa35c; --trunk: #563c28; --mountain: #40556a; }
+.scene.season-autumn { --leaf: #c8752b; --leaf-dark: #9a4f22; --ground: #5a4a2c; --shrub: #a86a2e; --trunk: #4d3623; --mountain: #494340; }
+.scene.season-winter { --leaf: #49595e; --leaf-dark: #37464a; --ground: #c1cad4; --shrub: #59696e; --trunk: #47392e; --mountain: #49545f; }
+
+.lz-mountain { fill: var(--mountain); }
+.lz-ground   { fill: var(--ground); }
+.lz-trunk    { fill: var(--trunk); }
+.lz-canopy   { fill: var(--leaf); }
+.lz-shrub    { fill: var(--leaf-dark); }
+.lz-house    { fill: #2b2f38; }
+.lz-roof     { fill: #3a3038; }
+.lz-door     { fill: #1d2028; }
+
+/* House window: dark by day, warm glow after dusk. */
+.lz-window { fill: #20242c; transition: fill 3s ease; }
+.scene.phase-night .lz-window,
+.scene.phase-twilight-dusk .lz-window,
+.scene.phase-twilight-dawn .lz-window,
+.scene.phase-dusk .lz-window { fill: #ffcf7a; }
+
+/* Season-only extras: hidden by default, revealed by the season class. */
+.lz-snow    { fill: #eef3f8; opacity: 0; transition: opacity 3s ease; }
+.lz-blossom { fill: #f4bcd6; opacity: 0; transition: opacity 3s ease; }
+.lz-fallen  { fill: #c8752b; opacity: 0; transition: opacity 3s ease; }
+
+.scene.season-winter .lz-snow    { opacity: 0.92; }
+.scene.season-winter .lz-canopy  { fill-opacity: 0.7; }
+.scene.season-spring .lz-blossom { opacity: 1; }
+.scene.season-autumn .lz-fallen  { opacity: 1; }
+
+/* Trees sway gently; wind speeds it up. Cheap: one transform per tree. */
+.lz-tree { animation: tree-sway 7s ease-in-out infinite; }
+.lz-tree:nth-of-type(2) { animation-delay: -2.5s; animation-duration: 6s; }
+.lz-tree:nth-of-type(3) { animation-delay: -4s; animation-duration: 8s; }
+/* Windy: swing wider (bigger angle) and faster, not just faster. */
+.scene.windy .lz-tree { animation-name: tree-sway-windy; animation-duration: 2.3s; }
+.scene.windy .lz-tree:nth-of-type(2) { animation-duration: 1.9s; }
+.scene.windy .lz-tree:nth-of-type(3) { animation-duration: 2.7s; }
+
+@keyframes tree-sway {
+  0%, 100% { transform: rotate(-1.1deg); }
+  50%      { transform: rotate(1.1deg); }
+}
+
+@keyframes tree-sway-windy {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
+
+/* ---------- Layer 3b: pre-rendered backdrop (optional) ----------------- */
+
+/* Two stacked layers so a season/phase change crossfades rather than cuts.
+   Opaque JPEG covers the SVG sky/celestial/landscape when active; the weather
+   overlays below in the cascade paint on top of it. */
+.scene-photo { inset: 0; }
+.scene-photo-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 2s ease-in-out;
+}
+.scene-photo-layer.is-visible { opacity: 1; }
+
+/* When a photo is showing it fully occludes the animated SVG scene, so pause
+   those loops to spare the Pi (the weather overlays keep animating on top). */
+.scene.has-photo .stars,
+.scene.has-photo .lz-tree { animation-play-state: paused; }
+
+/* ---------- Layer 4: weather overlays ---------------------------------- */
+
+/* Clouds — a few soft blobs drifting across the top band. Shown for
+   partly/cloudy/rain/thunder/wind; count kept to three. */
+.wx-clouds { inset: 0; opacity: 0; transition: opacity 3s ease; }
+.scene.weather-partly .wx-clouds,
+.scene.weather-cloudy .wx-clouds,
+.scene.weather-rain   .wx-clouds,
+.scene.weather-thunder .wx-clouds,
+.scene.weather-wind   .wx-clouds { opacity: 1; }
+.scene.weather-partly .wx-clouds { opacity: 0.6; }
+
+.wx-cloud {
+  top: 8%;
+  width: 340px;
+  height: 96px;
+  border-radius: 96px;
+  background: radial-gradient(closest-side, rgba(226, 232, 242, 0.55), rgba(226, 232, 242, 0.28) 70%, rgba(226, 232, 242, 0));
+  filter: blur(2px);
+  animation: cloud-drift 90s linear infinite;
+}
+.wx-cloud.c1 { top: 5%;  transform: scale(1.1); animation-duration: 110s; }
+.wx-cloud.c2 { top: 14%; transform: scale(0.8); animation-duration: 78s; animation-delay: -30s; opacity: 0.85; }
+.wx-cloud.c3 { top: 3%;  transform: scale(0.95); animation-duration: 96s; animation-delay: -60s; opacity: 0.9; }
+
+/* Cloudy/overcast reads darker; thunder darker still. */
+.scene.weather-cloudy .wx-cloud,
+.scene.weather-rain   .wx-cloud { background: radial-gradient(closest-side, rgba(150, 160, 176, 0.6), rgba(150, 160, 176, 0.3) 70%, rgba(150, 160, 176, 0)); }
+.scene.weather-thunder .wx-cloud { background: radial-gradient(closest-side, rgba(96, 104, 120, 0.7), rgba(96, 104, 120, 0.34) 70%, rgba(96, 104, 120, 0)); }
+
+.scene.windy .wx-cloud { animation-duration: 21s; }
+.scene.windy .wx-cloud.c2 { animation-duration: 16s; }
+
+@keyframes cloud-drift {
+  from { left: -360px; }
+  to   { left: 100%; }
+}
+
+/* Rain — short falling streaks, not solid lines: a diagonal line pattern cut
+   into dashes by a near-perpendicular mask, so it reads as individual drops.
+   Two passes at different depths/speeds. One compositor layer each. */
+.wx-rain { inset: -20% 0; opacity: 0; transition: opacity 1.5s ease; }
+.scene.weather-rain .wx-rain { opacity: 0.85; }
+.scene.weather-thunder .wx-rain { opacity: 0.95; }   /* heavier under a storm */
+
+.wx-rain::before, .wx-rain::after {
+  content: "";
+  position: absolute;
+  inset: -50% -20%;
+  /* Short elongated drops tiled like the snow, falling exactly one tile per
+     loop so it never jumps — small drops, not long streaked lines. */
+  background-image:
+    radial-gradient(1.4px 6px at 12% 8%,  rgba(210, 224, 248, 0.7) 0 45%, transparent 78%),
+    radial-gradient(1.4px 6px at 40% 28%, rgba(210, 224, 248, 0.6) 0 45%, transparent 78%),
+    radial-gradient(1.4px 6px at 66% 50%, rgba(210, 224, 248, 0.7) 0 45%, transparent 78%),
+    radial-gradient(1.4px 6px at 88% 70%, rgba(210, 224, 248, 0.6) 0 45%, transparent 78%),
+    radial-gradient(1.4px 6px at 28% 68%, rgba(210, 224, 248, 0.6) 0 45%, transparent 78%),
+    radial-gradient(1.4px 6px at 54% 88%, rgba(210, 224, 248, 0.7) 0 45%, transparent 78%);
+  background-size: 96px 140px;
+  animation: rain-fall 1.15s linear infinite;
+}
+.wx-rain::after {   /* a nearer, faster layer, offset so drops don't align */
+  background-position: 55px 75px;
+  opacity: 0.7;
+  animation-duration: 0.85s;
+}
+
+@keyframes rain-fall {
+  from { transform: translateY(0); }
+  to   { transform: translateY(140px); }   /* == tile height → seamless */
+}
+
+/* Snow — dot sheets falling with a lateral drift. Denser tiles, bigger flakes
+   and quicker fall so a snowstorm actually reads on the wall. */
+.wx-snow { inset: -20% 0; opacity: 0; transition: opacity 1.5s ease; }
+.scene.weather-snow .wx-snow { opacity: 0.95; }
+
+.wx-snow::before, .wx-snow::after {
+  content: "";
+  position: absolute;
+  inset: -50% -20%;
+  background-image:
+    radial-gradient(3px 3px at 20% 20%, #fff 50%, transparent 51%),
+    radial-gradient(2.4px 2.4px at 60% 40%, #fff 50%, transparent 51%),
+    radial-gradient(3.2px 3.2px at 80% 70%, #fff 50%, transparent 51%),
+    radial-gradient(2.2px 2.2px at 35% 80%, #fff 50%, transparent 51%),
+    radial-gradient(2.8px 2.8px at 48% 12%, #fff 50%, transparent 51%),
+    radial-gradient(2.4px 2.4px at 12% 62%, #fff 50%, transparent 51%),
+    radial-gradient(2.6px 2.6px at 90% 32%, #fff 50%, transparent 51%);
+  background-size: 150px 150px;
+  animation: snow-fall 6s linear infinite;
+}
+.wx-snow::after { background-size: 230px 230px; opacity: 0.8; animation-duration: 10s; animation-delay: -3s; }
+
+@keyframes snow-fall {
+  from { transform: translate3d(0, -20%, 0); }
+  to   { transform: translate3d(32px, 20%, 0); }
+}
+
+/* Fog — a soft band that breathes across the lower-middle. */
+.wx-fog {
+  inset: 30% 0 0 0;
+  opacity: 0;
+  transition: opacity 3s ease;
+  background: linear-gradient(to bottom, rgba(198, 206, 216, 0) 0%, rgba(198, 206, 216, 0.28) 55%, rgba(198, 206, 216, 0.12) 100%);
+  animation: fog-breathe 16s ease-in-out infinite;
+}
+.scene.weather-fog .wx-fog { opacity: 1; }
+
+@keyframes fog-breathe { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+/* Lightning — full-scene flashes for thunderstorms; the flash IS the
+   "Lightning" weather effect. Brighter, and a double-strike twice per cycle. */
+.wx-lightning {
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(to bottom, rgba(234, 240, 252, 1), rgba(226, 232, 245, 0.32) 42%, transparent 72%);
+}
+.scene.weather-thunder .wx-lightning { animation: lightning-flash 6s linear infinite; }
+
+@keyframes lightning-flash {
+  0%, 100% { opacity: 0; }
+  2%   { opacity: 1; }      /* first strike — bright double-flash */
+  4%   { opacity: 0.2; }
+  6%   { opacity: 0.85; }
+  9%   { opacity: 0; }
+  49%  { opacity: 0; }
+  51%  { opacity: 0.7; }    /* second, softer strike mid-cycle */
+  53%  { opacity: 0.12; }
+  55%  { opacity: 0.5; }
+  58%  { opacity: 0; }
+}
+
+/* Wind — faint fast streaks sliding across the whole scene, over the image.
+   The most visible part of "windy" (tree-sway only shows on the SVG scene). */
+.wx-wind { inset: 0; opacity: 0; transition: opacity 1s ease; }
+.scene.weather-wind .wx-wind { opacity: 0.65; }
+
+.wx-wind::before, .wx-wind::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background-image: repeating-linear-gradient(78deg,
+    rgba(226, 232, 244, 0) 0 68px,
+    rgba(226, 232, 244, 0.12) 68px 72px);
+  animation: wind-gust 0.9s linear infinite;
+}
+.wx-wind::after { opacity: 0.6; animation-duration: 1.5s; animation-delay: -0.4s; }
+
+@keyframes wind-gust {
+  from { transform: translateX(-9%); }
+  to   { transform: translateX(9%); }
+}
+
+/* A faint bottom scrim keeps the very bright daytime skies from washing out
+   the corners near the panels — ambience, never foreground. */
+.scene-scrim {
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 30%, transparent 55%, rgba(0, 0, 0, 0.28) 100%);
+  transition: background 2s ease;
+}
+
+/* Thunderstorm reads darker and moodier than plain rain — a storm darkening
+   over the whole scene, so it's clearly a storm even between the flashes. */
+.scene.weather-thunder .scene-scrim {
+  background:
+    linear-gradient(rgba(8, 10, 18, 0.42), rgba(8, 10, 18, 0.42)),
+    radial-gradient(120% 95% at 50% 22%, transparent 34%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* ---------- Reduced motion: keep the picture, drop the animation ------- */
+@media (prefers-reduced-motion: reduce) {
+  .stars, .lz-tree, .wx-cloud, .wx-rain::before, .wx-rain::after,
+  .wx-snow::before, .wx-snow::after, .wx-fog, .wx-wind::before, .wx-wind::after,
+  .scene.weather-thunder .wx-lightning {
+    animation: none !important;
+  }
+  .sky, .sun, .moon, .stars { transition: none; }
+}

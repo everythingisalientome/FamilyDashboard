@@ -531,7 +531,7 @@ with no manual steps.
 
 ---
 
-## Phase 6 — Animated ambient background (time × weather × season)  [ ]
+## Phase 6 — Animated ambient background (time × weather × season)  [x]
 
 **Goal:** Replace the flat page background with a living illustrated scene —
 trees, shrubs, a small house, and a mountain on the horizon — that continuously
@@ -630,6 +630,119 @@ season and re-lit by phase, with weather animating over the whole.
 day, changes with the live weather, and shows the right seasonal foliage — with
 the dashboard panels still fully legible and the Pi staying cool, over a full
 day of unattended running.
+
+**Verified 2026-08-03** at a forced 1920×1080 layout box, against the live
+weather feed and by forcing representative combinations. Live boot resolved to
+`phase-sunset / weather-thunder / season-summer` off the real clock + the served
+sun times (sunrise 06:33, sunset 20:24) and the current NWS icon token, with the
+sun placed low on the setting arc (`--sun-x 98%`, `--sun-y 9.4%`) and the moon
+parked. `#scene` sits at `z-index: 0`, `.dashboard` at `z-index: 1`; no scroll on
+either axis (1920×1080 exact); console clean apart from the pre-existing favicon
+404. Panels stayed fully opaque and legible across a **bright summer noon** (the
+brightest phase) — a calm blue frame, not a wash. Peeking behind the panels
+confirmed the full layer stack composes per combination: the **acceptance case
+"autumn sunset + lightning"** (orange canopies, fallen leaves, mountains, rain
+streaks under the thunder overlay, warm sunset gradient), a **summer noon**
+(sun high with its glow, blue sky, green foliage), and a **winter night**
+(starfield, glowing moon on its night arc, snow-capped mountains, snow-dusted
+canopies + ground, falling snow, and the house window warmly lit — the night-only
+glow firing correctly).
+
+**Deviations from spec** (all additive unless noted):
+- **Scene placement: full-bleed, "gaps only" (household choice).** Of the two
+  open options, the household picked the scene living behind the whole grid with
+  the panels **fully opaque** — so it shows in the padding frame and the gaps
+  between cells, never behind the text. No panel translucency, no photo-column
+  takeover; the photo slideshow is untouched. `#scene` is a fixed layer at
+  `z-index: 0`; `.dashboard` got `position: relative; z-index: 1` to sit above
+  it. This is the most legibility-safe reading of the spec's option 1.
+- **Render tech: layered inline SVG + CSS keyframes, no canvas** (settling open
+  decision 2 the Pi-friendly way). Everything animates via GPU-friendly
+  `transform`/`opacity` only. Weather particles are a **couple of tiled
+  background-image sheets translated with `transform`** (rain = diagonal
+  `repeating-linear-gradient` streaks; snow = radial dot pattern with lateral
+  drift), not per-drop DOM nodes — one compositor layer each, so particle count
+  is fixed regardless of "density." Stars are a static two-layer radial-gradient
+  dot field (no nodes). Clouds are three soft blobs. This keeps it cheap enough
+  for the Pi 3 B+ running 24/7; not yet measured on the Pi itself over a full day
+  (the spec's "stays cool" clause) — flag for a wall check.
+- **Phase-boundary math (open decision 3).** Ten phases anchored to the served
+  sunrise (SR) / sunset (SS) as minute offsets, evaluated in clock order:
+  night `< SR−90 or ≥ SS+90`, twilight-dawn `SR−90`, dawn `SR−40`, sunrise
+  `SR−10`, morning `SR+25`, noon `midpoint±75`, afternoon, sunset `SS−25`, dusk
+  `SS+10`, twilight-dusk `SS+40 … SS+90`. Sun/moon ride a `sin` arc between their
+  times; JS writes only `--sun-x/y`, `--moon-x/y` once a minute and the layer
+  visibility is pure CSS off the phase class.
+- **Weather-token → animation mapping (open decision 4).** NWS/`nws_icons.py`
+  tokens map to eight states: `clear`/`clear-night`→clear (sun or starfield does
+  the work), `hot`→sunny, `partly`→light cloud, `cloudy`→overcast, `rain`→rain,
+  `thunder`→thunderstorm **with the lightning flash** (Lightning is the flash
+  effect, not a separate token), `snow`/`sleet`→snow, `fog`→fog band, `wind`→
+  windy (speeds up cloud drift + tree sway). Clear-by-day therefore reads as
+  Sunny and clear-by-night as the starfield, per the spec's overlap notes.
+- **Small server addition:** `/api/weather`'s `current` now also carries raw local
+  ISO `sunrise_at` / `sunset_at` (the panel's formatted `sunset` is unchanged).
+  The times were already fetched into `weather_astro` (Open-Meteo) but only the
+  formatted sunset was surfaced; the background needs the machine-readable pair
+  for the phase math. Still no new Pi fetch — `background.js` reads the same
+  cached `/api/weather` the weather panel already polls.
+- **New files:** `static/js/background.js` (the driver — reads clock + sun times +
+  condition + date, sets phase/weather/season classes and celestial vars) and
+  `static/css/background.css` (all four layers + keyframes). Scene markup + the
+  fixed landscape SVG (mountain, house w/ night-glow window, 3 trees, 3 shrubs,
+  ground, seasonal snow/blossom/fallen-leaf extras) is inline in `index.html`
+  like the weather glyphs. `main.js` wires `startBackground(settings)` on the
+  same settings object; nothing else changed.
+- **`prefers-reduced-motion`** drops every animation but keeps the still picture
+  (gradient, sun/moon position, foliage). The nightly 03:00 reload resets the two
+  `setInterval`s (minute tick + weather poll), so no timer/memory leak across
+  days.
+- **Foliage/season is by calendar month** (Dec–Feb winter, Mar–May spring, etc.),
+  not the astronomical equinox/solstice — simpler and indistinguishable on the
+  wall. Winter also snow-dusts the canopies/roof/ground and caps the mountains;
+  spring adds blossoms; autumn adds fallen leaves + orange canopies.
+- **Frosted-glass panels (later refinement, household ask).** Every panel —
+  calendar, agenda, ticker, weather **and the photo column** — went from a solid
+  fill to a semi-transparent tint (`--panel-glass`, `rgba(16,19,25,0.28)`) plus
+  `backdrop-filter: blur(--panel-blur=13px)`, so the ambient scene shows through
+  as a soft dimmed wash and the background "comes alive" instead of only peeking
+  through the gaps. The inner tiles (calendar day cells, weather forecast cards)
+  use a near-transparent `--box-glass` + hairline `--box-edge` so they read as
+  frosted tiles rather than solid blocks; the photo column's per-photo blurred
+  fill was made translucent so the scene shows in the letterbox areas too.
+  Verified legible even at the brightest phase (summer noon) and through a warm
+  sunset. **Caveat:** `backdrop-filter` over the animated scene is continuous GPU
+  work — untested on the wall Pi (Pi 3 B+); it is a single CSS var (set
+  `--panel-blur: 0` to drop it), and an `@supports not (backdrop-filter)` fallback
+  returns panels to near-opaque. Watch CPU/temp on the wall; dial back if it
+  throttles.
+- **Optional raster backdrop (built).** `docs/background-prompts.md` has 40
+  copy-paste image-gen prompts (season × phase) to pre-render the scene as art;
+  the recommendation is those 40 stills + the existing CSS weather overlay, not
+  320 animated loops (which would heat-throttle the Pi). `background.js` now
+  swaps a `/img/bg/<season>-<phase>.jpg` in as a crossfading backdrop layer
+  (`.scene-photo`, two layers) **above the SVG scene but below the weather
+  overlays**, so rain/snow/clouds/lightning still animate on top of the image.
+  A new `GET /api/backgrounds` (`app/api/backgrounds.py`) lists which images
+  exist under `static/img/bg`; the frontend reads it once and only requests a
+  present image, so not-yet-generated combos **fall back to the live SVG with no
+  404**. Occluded SVG animations (stars, tree-sway) pause under an active photo.
+  Verified end-to-end against a real generated night image at the live combo:
+  manifest hit → single request → crossfade in → `has-photo`, cloud overlay
+  compositing over it, panels legible, console clean (bar the favicon 404).
+  Images are a drop-in — the SVG scene renders wherever an image is absent. The
+  full 40-image set (season × phase) was generated and is committed; a one-off
+  `scripts/compress_backgrounds.py` (Pillow, dev-only, in `requirements.txt`
+  under a tooling section) shrank them ~93% (74 MB → 5.3 MB) before commit.
+- **Weather-overlay polish (household feedback).** The overlays were tuned on the
+  wall: snow denser with bigger flakes; wind given a sliding streak overlay plus
+  wider tree-sway and faster clouds; lightning brightened to a double-strike;
+  thunderstorm darkened with a moody vignette so it reads distinct from plain
+  rain even between flashes. Rain was reworked twice — from continuous
+  `repeating-linear-gradient` lines (read as static hatching / fast-moving
+  streaks) to **short tiled drops** (elongated radial-gradient dots falling
+  exactly one tile per loop, so it's seamless and reads as gentle rain, not
+  sliding lines). All still pure transform/opacity on fixed-count layers.
 
 ---
 

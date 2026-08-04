@@ -10,3 +10,6 @@ httpx>=0.27
 icalendar>=6.0
 recurring-ical-events>=3.3    # RRULE/EXDATE/RECURRENCE-ID expansion
 python-dotenv>=1.0            # reads the secret family-calendar URL from .env
+
+# Dev tooling only (not imported by the running app / service)
+Pillow>=10.0                  # scripts/compress_backgrounds.py: shrink the ambient-background JPEGs

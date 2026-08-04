@@ -73,6 +73,11 @@ def _astro(row: Any, today: date) -> dict[str, Any]:
     return {
         "uv_index": round(uv) if uv is not None else None,
         "sunset": _clock(row["sunset"]) if row is not None else None,
+        # Raw local ISO sun times for the ambient background's phase math
+        # (the browser reads HH:MM off these). The formatted "sunset" above
+        # stays for the weather panel; these are the machine-readable pair.
+        "sunrise_at": row["sunrise"] if row is not None else None,
+        "sunset_at": row["sunset"] if row is not None else None,
         "moon_phase": name,
         "moon_icon": icon,
     }

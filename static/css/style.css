@@ -4,6 +4,19 @@
 :root {
   --bg: #08090c;
   --panel: #101319;
+  /* Frosted-glass panel fill: the solid --panel tint at reduced alpha so the
+     ambient scene shows through, softened by --panel-blur. Set --panel-blur to
+     0 (or drop the backdrop-filter) if the wall Pi can't spare the GPU for it;
+     the @supports fallback below returns panels to near-opaque without blur. */
+  --panel-glass: rgba(16, 19, 25, 0.28);
+  --panel-blur: 13px;
+  /* Inner tiles (calendar day cells, weather forecast cards). Kept nearly
+     transparent — they sit ON the frosted panel, so any dark fill would just
+     double the tint and look solid. A whisper of white lifts them to a glass
+     tile and --box-edge keeps them legible as boxes. Raise --box-glass alpha
+     (or darken it) if the boxes should read more solid. */
+  --box-glass: rgba(255, 255, 255, 0.03);
+  --box-edge: rgba(255, 255, 255, 0.08);
   --panel-edge: #1e232d;
   --text: #f2f4f8;
   --text-dim: #8b93a3;
@@ -37,6 +50,10 @@ html, body {
   width: 100vw;
   padding: var(--gap);
   gap: var(--gap);
+  /* Sit above the ambient scene (#scene, z-index 0). Panels are opaque, so
+     the scene only shows in this padding frame and the gaps between cells. */
+  position: relative;
+  z-index: 1;
   grid-template-columns: var(--photo-column) 1fr;
   /* The clock and the alerts both live as overlays on the photos, so the right
      column is just the four data panels. They stay fr so vertical space is
@@ -71,10 +88,19 @@ html, body {
 
 .calendar, .agenda, .weather {
   padding: 6px 10px;
-  background: var(--panel);
+  background: var(--panel-glass);
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.05);
+  backdrop-filter: blur(var(--panel-blur)) saturate(1.05);
   border: 1px solid var(--panel-edge);
   border-radius: var(--radius);
   overflow: hidden;
+}
+
+/* No backdrop-filter (older Chromium) → fall back to a near-opaque fill so the
+   scene never bleeds through sharp enough to hurt legibility. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .calendar, .agenda, .weather { background: rgba(16, 19, 25, 0.94); }
+  .photos { background: #000; }   /* no blur to frost through — keep it solid */
 }
 
 /* Alerts overlay lives on the photo panel — see alerts.css. */
@@ -84,7 +110,11 @@ html, body {
 .photos {
   position: relative;
   border-radius: var(--radius);
-  background: #000;
+  /* Frosted like the data panels, so the ambient scene shows through the
+     letterbox areas around each photo (the blurred fill below is translucent). */
+  background: var(--panel-glass);
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(1.05);
+  backdrop-filter: blur(var(--panel-blur)) saturate(1.05);
   overflow: hidden;
 }
 
@@ -100,13 +130,16 @@ html, body {
 
 .photo-layer.is-visible { opacity: 1; }
 
-/* Blurred fill behind the photo so portrait shots don't leave dead bars. */
+/* Blurred fill behind the photo so portrait shots don't leave dead bars.
+   Translucent now so the frosted ambient scene shows through the bars while it
+   still softens them — the photo itself (below) stays fully opaque. */
 .photo-backdrop {
   position: absolute;
   inset: -6%;
   background-size: cover;
   background-position: center;
   filter: blur(38px) brightness(0.4) saturate(1.1);
+  opacity: 0.6;
 }
 
 /* contain keeps every photo whole, whatever its orientation. */
