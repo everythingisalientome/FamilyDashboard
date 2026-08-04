@@ -64,23 +64,30 @@
   min-height: 0;
   padding: 4px 6px;
   border-radius: 9px;
-  background: #151922;
+  background: var(--box-glass);        /* near-transparent: shows the panel frost */
+  border: 1px solid var(--box-edge);   /* hairline keeps it readable as a box */
   overflow: hidden;
 }
 
-.day.is-outside { background: #0e1117; }
+.day.is-outside {                       /* recede: dim it rather than reveal scene */
+  background: rgba(8, 10, 14, 0.30);
+  border-color: rgba(255, 255, 255, 0.04);
+}
 .day.is-outside .day-number { color: #4a5261; }
 
 .day.is-today {
-  background: #1d2637;
+  background: rgba(111, 177, 255, 0.12);  /* faint accent wash under the ring */
+  border-color: transparent;
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 /* Multi-day category span: faint wash of the category colour across every day
    it covers, so a break week reads as one block. Placed after .is-today so a
-   categorised "today" keeps its ring but takes the tint. */
+   categorised "today" keeps its ring but takes the tint. Translucent so the
+   ambient scene still comes through the tint. */
 .day.has-category {
-  background: color-mix(in srgb, var(--cat-color) 16%, #151922);
+  background: color-mix(in srgb, var(--cat-color) 22%, transparent);
+  border-color: color-mix(in srgb, var(--cat-color) 30%, transparent);
 }
 
 .day-head {
@@ -207,11 +214,19 @@
   border-radius: var(--radius);
   overflow: hidden;
   font-size: 1.05rem;
-  /* Appealing but not loud: a deep indigo→blue→teal wash with a soft sheen. */
+  /* Appealing but not loud: a deep indigo→blue→teal wash with a soft sheen.
+     Semi-transparent + frosted so the ambient scene tints through it like the
+     other panels, while the gradient keeps its identity. */
   background:
-    linear-gradient(90deg, #3a2d6b 0%, #274a86 55%, #1f6f74 100%);
+    linear-gradient(90deg, rgba(58, 45, 107, 0.74) 0%, rgba(39, 74, 134, 0.74) 55%, rgba(31, 111, 116, 0.74) 100%);
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  backdrop-filter: blur(var(--panel-blur));
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ticker { background: linear-gradient(90deg, #3a2d6b 0%, #274a86 55%, #1f6f74 100%); }
 }
 
 .ticker-lead {
