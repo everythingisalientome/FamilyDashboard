@@ -62,3 +62,8 @@ def test_two_persons_or_none_keep_feed_colour() -> None:
 
 def test_non_colour_feed_keeps_feed_colour_even_with_one_person() -> None:
     assert colour(ev("Picture day", "school")) == "#feed00"
+
+
+def test_family_tag_matches_nobody() -> None:
+    # The importer's explicit "Family" wins over a name in the title.
+    assert persons_for(ev("Prapti and Prisha zoo day", person="family"), ROSTER) == []

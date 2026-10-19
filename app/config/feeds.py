@@ -140,5 +140,9 @@ CALENDAR_REFRESH_DAY: str = _env_str("CALENDAR_REFRESH_DAY", "*")
 CALENDAR_REFRESH_HOUR: int = _env_int("CALENDAR_REFRESH_HOUR", 23)
 CALENDAR_REFRESH_MINUTE: int = _env_int("CALENDAR_REFRESH_MINUTE", 0)
 
-#: How far ahead events are expanded and stored.
+#: How far ahead /api/events lists events (the grid / v1 agenda window).
 EVENT_HORIZON_DAYS: int = 30
+
+#: How far ahead the calendar fetchers expand and store events. Longer than the
+#: list window so the hero's NEXT UP / NEXT HOLIDAY can see a closure weeks out.
+EVENT_CACHE_DAYS: int = max(_env_int("EVENT_CACHE_DAYS", 90), EVENT_HORIZON_DAYS)

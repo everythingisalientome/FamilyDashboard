@@ -369,7 +369,7 @@ a pre-existing favicon 404).
 
 ---
 
-## Phase 4 — Photo → calendar: Google Calendar feed + JSON importer  [~]
+## Phase 4 — Photo → calendar: Google Calendar feed + JSON importer  [x]
 
 **Goal:** Family events (doctor visits, daycare closures, trips, parties,
 reminders) get onto the wall and onto everyone's phones with the least typing.
@@ -493,6 +493,98 @@ admin tab yet.
 - Tests: `tests/test_gcal.py` (fake two-page service, row mapping, exclusive
   end, UTC, paging, failure paths, person/family attribution, config feed
   injection, ICS skip). 36 tests pass.
+
+**Step 2 done (2026-10-18) — writer, importer, admin "Add events", exclusions.**
+- `app/gcal_client.py` — `build_service()` / `config_problem()` /
+  `http_status()` moved out of `fetchers/gcal.py`, shared with the writer.
+- `app/gcal_writer.py` — `event_id`, `to_google` (all-day exclusive end;
+  timed with the DISPLAY_TZ offset + `timeZone`, default 1 h when no
+  end_time; `extendedProperties.private = {source: wall, person, kind}`;
+  `reminders.useDefault=false`; description = notes), `insert_many`
+  (`sendUpdates=none`; 409 → `exists`), `delete` (looks the event up first;
+  raises `PermissionError` unless `source == wall`; missing/cancelled →
+  False), `list_wall` (`privateExtendedProperty=source=wall`, paged) and
+  `find_supersedes` (same person + title on the old date; `start_time` breaks
+  ties).
+- `app/importer_rules.py` — the pure validator: required keys, enums,
+  date/time formats, ±18 months, `end_date >= date`, person from the row →
+  the request → error `no person` (must be a roster key or `family`), title
+  non-empty and ≤ 80 after the title conventions. `past`, warnings for low
+  confidence / ignored times / a `supersedes` with no old date, and
+  `{"skipped": …}` objects come back as error rows. Error rows are returned
+  with whatever parsed, never dropped.
+- `app/api/importer.py` — `POST /api/admin/import/validate` (one
+  `list_wall` over every row's span, incl. superseded dates, per request) and
+  `POST /api/admin/import/commit` (re-validates every row server-side, then
+  `insert_many`, then `delete` per id, then `gcal.run()` on a daemon thread;
+  returns `{created, exists, errors, deleted, results}`). 503 when the
+  calendar isn't configured.
+- Admin: `static/admin.html` + `js/admin_import.js` + `css/admin_import.css`.
+  "Add events" is the first section: person select (`/api/events.persons` +
+  Family), paste box (a markdown fence or prose around the array is
+  tolerated), Validate, review rows (tick · editable date · time · editable
+  title · person · kind · status chip; past unticked, error/exists locked;
+  "replaces <date> — delete old"), "Add N events to calendar", a result line,
+  and the textarea is cleared. Under 700 px each row is a stacked card; 44 px
+  targets, 16 px inputs. `admin.css`: the status table scrolls inside its
+  own box on a phone, so the page no longer scrolls sideways.
+- **Exclusions:** `EVENT_EXCLUDE_KEYWORDS` (display.py, `.env.example`,
+  `.env`; default `board of education, school bond, community forum, futures
+  fair`) is a case-insensitive substring match, applied once in
+  `/api/events` right after the SQL read, so grid, hero, radar, waste and the
+  v1 highlights all see the filtered list. The cache keeps everything.
+- `closes` is a built-in `school` keyword; `closed` was already a built-in
+  `holiday` keyword, so nothing was needed there.
+- Tests: `tests/test_importer.py` (rules; writer and both endpoints against
+  an in-memory fake calendar), `tests/test_exclusions.py`, plus a family-tag
+  test in `test_persons.py`. 54 pass.
+
+**Verified (2026-10-18, dev server on :8001, real calendar).** The daycare
+sample from the prompt doc with person *prapti* validated as 6 rows with no
+errors and 3 flagged past. Committing the Nov 25 `early_close` and Nov 26
+`closed` rows gave `created: 2`. Re-committing gave `exists: 2`, the
+November wall-event count stayed at 2, and a re-validate flagged both
+`exists`. After the commit's `gcal.run`, `/v2` showed Prapti's NEXT UP as
+"Closes 12:00 – Family Luncheon" (Wed Nov 25, 12 PM) and her NEXT HOLIDAY as
+"Thu, Nov 26 · Daycare closed – Thanksgiving Day" in red. The 16 excluded
+school events are still in the cache but are missing from `/api/events` and
+`/v2`; Prisha's NEXT UP skipped the Oct 22 bond forum and the Oct 29 / Nov 2
+board meetings to Nov 3 (Uncapped Workday). `writer.delete` removed both
+rows (`True`), refused the hand-made "Family Wall Service Account Test"
+event, and after refresh *calendars* the family feed had 1 event and
+Prapti's column was empty again. The phone layout was checked at 390 px:
+single column, no sideways scroll.
+
+Deviations:
+- **Id prefix is `fam`, not `wall`.** Google event ids must be base32hex
+  (`0-9a-v`), and `w` is outside it: every `wall…` insert came back
+  `400 Invalid resource id value`. Ids are `fam` + `sha1(person|date|
+  title.lower().strip())[:28]` (31 chars). The *tag* is still
+  `source=wall`.
+- **New `EVENT_CACHE_DAYS` (default 90).** The fetchers cached only today +
+  30 d (`EVENT_HORIZON_DAYS`), so a closure 39 days out never reached the
+  hero (the Phase 7 step 2 known limit). The calendar fetchers now cache
+  `EVENT_CACHE_DAYS` ahead, and hero/radar/waste read that far.
+  `EVENT_HORIZON_DAYS` (30) is still the default `/api/events?days` list, so
+  the grid and the v1 agenda are unchanged.
+- **Title conventions apply at validate time, not only on commit.** The
+  review table shows the title that will be written, and the id (and the
+  `exists` check) is computed from it. Commit re-applies them idempotently,
+  in case a title was edited. The daycare persons are configurable as
+  `IMPORT_DAYCARE_PERSONS` (default `prapti`) instead of hard-coded.
+- **Re-importing a deleted event restores it.** Google keeps a deleted
+  event's id, so a later insert with that id returns 409. On a 409 the writer
+  reads the event: if it is `cancelled`, it is updated back to `confirmed`
+  and reported as `created (restored)`; otherwise it is `exists`.
+- **Person `family`:** stored as the tag `family`. `persons_for` treats that
+  tag as "nobody in particular", so the event lands on the family line even
+  when a child's name is in the title.
+- Only `kind`, `title` and `date` are required. The other schema keys may be
+  missing and are read as null, because models drop null keys.
+- `gcal_writer.py` is ~190 lines, not ~120 (it holds the 409 restore path
+  and `list_wall`).
+- Not built: a same-day reschedule (same person/date/title, new time) shares
+  the old id. It shows a warning to change the time in Google Calendar.
 
 ---
 

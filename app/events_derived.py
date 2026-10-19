@@ -12,6 +12,7 @@ from typing import Any
 
 from app.alert_rules import matches_trash
 from app.config import (
+    EVENT_EXCLUDE_KEYWORDS,
     FAMILY_FEEDS,
     HERO_HOLIDAY_CATEGORIES,
     PERSONS,
@@ -26,6 +27,12 @@ Event = dict[str, Any]
 
 #: Most entries the "On the radar" footer can hold.
 RADAR_MAX = 8
+
+
+def is_excluded(title: str | None, keywords: tuple[str, ...] = EVENT_EXCLUDE_KEYWORDS) -> bool:
+    """True when ``title`` contains an exclusion keyword (case-insensitive substring)."""
+    low = (title or "").lower()
+    return any(k.lower() in low for k in keywords)
 
 
 def is_upcoming(event: Event, today: date, now: datetime) -> bool:

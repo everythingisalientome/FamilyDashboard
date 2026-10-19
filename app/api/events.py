@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 from app.config import (
     CALENDAR_FEEDS,
     DISPLAY_TZ,
+    EVENT_CACHE_DAYS,
     EVENT_HORIZON_DAYS,
     HIGHLIGHT_DAYS,
     HIGHLIGHT_KEYWORDS,
@@ -18,7 +19,7 @@ from app.db import connect, last_success
 from app.envelope import envelope
 from app.event_window import grid_start
 from app.event_styles import EVENT_CATEGORIES, categorize
-from app.events_derived import hero, radar, waste
+from app.events_derived import hero, is_excluded, radar, waste
 from app.fetchers.calendars import job_name
 from app.persons import display_color, persons_for
 
@@ -43,7 +44,7 @@ def get_events(
     window_start = grid_start(today)
     window_end = today + timedelta(days=days)
     # hero/radar/waste read everything cached ahead, whatever ``days`` asks.
-    ahead = max(days, EVENT_HORIZON_DAYS, RADAR_DAYS)
+    ahead = max(days, EVENT_CACHE_DAYS, RADAR_DAYS)
     read_end = today + timedelta(days=ahead)
 
     jobs = [job_name(feed) for feed in CALENDAR_FEEDS]
@@ -59,6 +60,9 @@ def get_events(
             (window_start.isoformat(), read_end.isoformat()),
         ).fetchall()
         updated = last_success(conn, jobs) if jobs else None
+    # EVENT_EXCLUDE_KEYWORDS: dropped once, here, before anything derives from
+    # the rows. The cache keeps them, so a keyword change needs no refetch.
+    rows = [row for row in rows if not is_excluded(row["title"])]
 
     feed_colors = {f.key: f.color for f in CALENDAR_FEEDS}
     every = [_event(row, feed_colors) for row in rows]

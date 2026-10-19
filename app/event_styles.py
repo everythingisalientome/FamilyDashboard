@@ -33,7 +33,7 @@ _DEFAULTS: dict[str, tuple[int, str, tuple[str, ...]]] = {
         20,
         "#ffab00",  # golden-orange
         ("first day of school", "last day of school", "early dismissal",
-         "early release"),
+         "early release", "closes"),  # "Closes 12:00 – …" (importer early_close)
     ),
     "holiday": (
         30,

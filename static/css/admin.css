@@ -164,3 +164,8 @@ button.remove:disabled { opacity: 0.55; cursor: default; }
 
 .foot { margin-top: 28px; }
 .foot a, .admin a { color: var(--accent); }
+
+/* Phone: the status table scrolls inside its box, not the whole page. */
+@media (max-width: 699px) {
+  table.status { display: block; overflow-x: auto; }
+}

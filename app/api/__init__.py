@@ -8,6 +8,7 @@ from app.api import (
     alerts,
     backgrounds,
     events,
+    importer,
     photos,
     settings,
     status,
@@ -23,4 +24,5 @@ router.include_router(weather.router)
 router.include_router(alerts.router)
 router.include_router(admin.router)
 router.include_router(admin_logs.router)
+router.include_router(importer.router)
 router.include_router(status.router)

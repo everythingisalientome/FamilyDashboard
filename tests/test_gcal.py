@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from app import db
+from app import db, gcal_client
 from app.config import Person
 from app.events_derived import hero
 from app.fetchers import gcal
@@ -84,8 +84,9 @@ def configured(temp_db: Path, monkeypatch: pytest.MonkeyPatch) -> FakeService:
     key.write_text("{}")
     service = FakeService()
     monkeypatch.setattr(gcal, "GCAL_CALENDAR_ID", "family@example.com")
-    monkeypatch.setattr(gcal, "GCAL_SERVICE_ACCOUNT_FILE", key)
-    monkeypatch.setattr(gcal, "_build_service", lambda: service)
+    monkeypatch.setattr(gcal_client, "GCAL_CALENDAR_ID", "family@example.com")
+    monkeypatch.setattr(gcal_client, "GCAL_SERVICE_ACCOUNT_FILE", key)
+    monkeypatch.setattr(gcal_client, "build_service", lambda: service)
     return service
 
 
@@ -150,7 +151,7 @@ def test_missing_key_file_records_failure_and_keeps_rows(
 ) -> None:
     gcal.run()
     before = rows()
-    monkeypatch.setattr(gcal, "GCAL_SERVICE_ACCOUNT_FILE", temp_db / "missing.json")
+    monkeypatch.setattr(gcal_client, "GCAL_SERVICE_ACCOUNT_FILE", temp_db / "missing.json")
 
     gcal.run()
 
@@ -168,7 +169,7 @@ def test_api_error_records_failure_and_keeps_rows(
     def boom() -> Any:
         raise RuntimeError("HTTP 503")
 
-    monkeypatch.setattr(gcal, "_build_service", boom)
+    monkeypatch.setattr(gcal_client, "build_service", boom)
     gcal.run()  # must not raise
 
     assert rows() == before

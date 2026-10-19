@@ -1,0 +1,134 @@
+/* Admin "Add events" — built for a phone: 44px targets, 16px inputs (no iOS
+   zoom), one column under 700px. Colours come from admin.css's tokens. */
+
+.import .imp-label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.imp-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: #0e1116;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.imp-input:focus { outline: none; border-color: var(--accent); }
+.imp-input:disabled { opacity: 0.6; }
+.imp-json {
+  min-height: 140px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  resize: vertical;
+}
+@media (max-width: 699px) { .imp-json { font-size: 16px; } }
+
+.imp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.imp-btn {
+  min-height: 44px;
+  padding: 10px 20px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.imp-btn:hover { border-color: var(--accent); }
+.imp-btn:disabled { opacity: 0.55; cursor: default; }
+.imp-primary { background: #1f4f74; border-color: var(--accent); font-weight: 600; }
+.imp-note { font-size: 0.9rem; }
+
+/* Review rows: a grid on wide screens, a stacked card on a phone. */
+.imp-review { margin-top: 16px; }
+.imp-rows {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.imp-row {
+  display: grid;
+  grid-template-columns: 44px 150px 110px minmax(0, 1fr) 70px 90px minmax(120px, 0.6fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.imp-row:last-child { border-bottom: none; }
+.imp-row.locked { background: rgba(255, 255, 255, 0.02); }
+.imp-tick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.imp-tick input, .imp-replaces input { width: 22px; height: 22px; margin: 0; }
+.imp-time, .imp-person, .imp-kind { font-size: 0.88rem; }
+.imp-person { text-transform: capitalize; }
+.imp-replaces {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.88rem;
+  color: #ffd8a8;
+  cursor: pointer;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.chip-ok { color: #b2f2bb; background: rgba(81, 207, 102, 0.16); }
+.chip-past { color: #ced4da; background: rgba(134, 142, 150, 0.22); }
+.chip-exists { color: #a5d8ff; background: rgba(116, 192, 252, 0.16); }
+.chip-err { color: #ffb4b4; background: rgba(255, 107, 107, 0.16); word-break: break-word; }
+.chip-warn { display: block; margin-top: 4px; font-size: 0.78rem; color: #ffd8a8; }
+
+.imp-result {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.imp-result.ok { border-color: rgba(81, 207, 102, 0.5); }
+.imp-result.err { border-color: rgba(255, 107, 107, 0.5); color: #ffb4b4; }
+
+@media (max-width: 699px) {
+  .admin { padding: 16px 16px 40px; }
+  .imp-row {
+    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-areas:
+      "tick date"
+      "tick title"
+      ".    meta"
+      ".    status";
+    row-gap: 6px;
+  }
+  .imp-tick { grid-area: tick; align-self: start; }
+  .imp-date { grid-area: date; }
+  .imp-title { grid-area: title; }
+  .imp-time { grid-area: meta; }
+  .imp-person, .imp-kind { display: none; }
+  .imp-status { grid-area: status; }
+  .imp-row .imp-time::after { content: " · " attr(data-who); text-transform: capitalize; }
+}

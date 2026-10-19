@@ -5,16 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard Admin</title>
   <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin_import.css">
 </head>
 <body>
   <main class="admin">
     <header class="admin-head">
       <h1>Family Dashboard — Admin</h1>
       <p class="sub">
-        Feed health and manual refresh. LAN-only, no login.
+        Add events, feed health and manual refresh. LAN-only, no login.
         <span id="poll-note" class="poll-note"></span>
       </p>
     </header>
+
+    <section aria-labelledby="import-h" class="import">
+      <h2 id="import-h">Add events</h2>
+      <p class="hint">
+        Photograph the calendar or email, run it through the extraction prompt
+        in any chat app, then paste the JSON it returns
+        (docs/event-extraction-prompt.md).
+      </p>
+      <label class="imp-label" for="imp-person">Who is it for?</label>
+      <select id="imp-person" class="imp-input"></select>
+      <label class="imp-label" for="imp-json">JSON from the extraction prompt</label>
+      <textarea id="imp-json" class="imp-input imp-json" rows="7"
+        placeholder='[{"kind":"closed","title":"Thanksgiving Day","date":"2026-11-26", …}]'
+        spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <div class="imp-actions">
+        <button id="imp-validate" class="imp-btn">Validate</button>
+        <span id="imp-note" class="imp-note muted"></span>
+      </div>
+      <div id="imp-review" class="imp-review" hidden>
+        <div id="imp-rows" class="imp-rows"></div>
+        <div class="imp-actions">
+          <button id="imp-commit" class="imp-btn imp-primary" disabled>Add 0 events to calendar</button>
+        </div>
+      </div>
+      <p id="imp-result" class="imp-result" hidden></p>
+    </section>
 
     <section aria-labelledby="refresh-h">
       <h2 id="refresh-h">Refresh now</h2>
@@ -64,5 +91,6 @@
   </main>
 
   <script src="/js/admin.js"></script>
+  <script src="/js/admin_import.js"></script>
 </body>
 </html>

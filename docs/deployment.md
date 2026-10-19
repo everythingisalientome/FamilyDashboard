@@ -193,6 +193,35 @@ that expires. It is read on the nightly calendar schedule, at boot, and on
 A failure (key missing, share removed, Google unreachable) shows as an error on
 that row; the wall keeps the last good family events.
 
+### Adding events from a photo
+
+For the household: daycare calendars, appointment emails, flyers. It takes
+about two minutes from a phone and nobody types dates.
+
+1. **Take a photo** (or a screenshot) of the calendar page or email.
+2. **Get the JSON.** Open any chat app (ChatGPT, Claude, Gemini…). Paste the
+   prompt from `docs/event-extraction-prompt.md`, fill in today's date and who
+   it is for, attach the photo, and send. Copy the JSON it replies with.
+3. **On the home Wi-Fi**, open **`http://192.168.0.68:8000/admin`** on the
+   phone. *Add events* is at the top.
+4. Pick **who it is for**, paste the JSON, tap **Validate**.
+5. **Review the list.** Fix a date or title if the photo was misread.
+   - *past* rows are unticked; tick one if you want it anyway.
+   - *already on calendar* rows are skipped. Pasting the same JSON twice adds
+     nothing.
+   - Red rows have a problem (shown on the row) and can't be added.
+   - A rescheduled appointment shows **"replaces <date> — delete old"**.
+     Leave it ticked to remove the old appointment.
+6. Tap **Add N events to calendar**. They are in the family Google Calendar
+   right away (on everyone's phones), and on the wall within a few minutes.
+
+To undo, delete the event in Google Calendar as usual; the wall follows on its
+next refresh. The importer only ever deletes events it created itself.
+
+Events whose title contains an `EVENT_EXCLUDE_KEYWORDS` phrase (board
+meetings, bond forums…) never show on the wall. Edit that line in `.env` and
+restart to change what is hidden; nothing needs refetching.
+
 ## 5. Uninstall
 
 ```powershell

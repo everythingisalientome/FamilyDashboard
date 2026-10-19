@@ -14,6 +14,9 @@ from typing import Any
 from app.config import PERSON_COLOR_FEEDS, PERSONS, Person
 from app.event_styles import compile_keywords
 
+#: The importer's person value for "the whole family" — matches nobody.
+FAMILY_TAG = "family"
+
 
 @lru_cache(maxsize=None)
 def _pattern(keywords: tuple[str, ...]) -> re.Pattern | None:
@@ -24,11 +27,14 @@ def _pattern(keywords: tuple[str, ...]) -> re.Pattern | None:
 def persons_for(event: Any, roster: tuple[Person, ...] = PERSONS) -> list[str]:
     """Keys of the persons ``event`` belongs to, in roster order.
 
-    A DB ``person`` tag (the Google feed, Phase 4) wins outright. Otherwise an
+    A DB ``person`` tag (the Google feed, Phase 4) wins outright; the tag
+    ``family`` means nobody in particular (the family line). Otherwise an
     event belongs to everyone whose FEEDS list its source — so a school event
     belongs to every person in school — plus everyone named in its title.
     """
     tagged = (event["person"] or "").strip().lower()
+    if tagged == FAMILY_TAG:  # the importer's explicit "whole family"
+        return []
     if tagged:
         return [tagged]
 

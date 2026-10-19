@@ -76,6 +76,22 @@ RADAR_KEYWORDS: tuple[str, ...] = _env_csv(
 )
 RADAR_DAYS: int = _env_int("RADAR_DAYS", 30)
 
+#: Events whose title contains one of these (case-insensitive substring) are
+#: dropped from /api/events before anything else sees them — grid, hero,
+#: radar, waste, highlights. The cache keeps them, so a change needs no refetch.
+EVENT_EXCLUDE_KEYWORDS: tuple[str, ...] = _env_csv(
+    "EVENT_EXCLUDE_KEYWORDS",
+    "board of education, school bond, community forum, futures fair",
+)
+
+# --- Importer (Phase 4) ----------------------------------------------------
+
+#: Persons whose ``kind=closed`` imports are a daycare closure: the importer
+#: titles them "Daycare closed – <title>" so they land in the holiday category.
+IMPORT_DAYCARE_PERSONS: frozenset[str] = frozenset(
+    k.lower() for k in _env_csv("IMPORT_DAYCARE_PERSONS", "prapti")
+)
+
 #: Waste strip colour: the week's deciding pickup (TRASH_REMINDER_KEYWORDS)
 #: is "recycle" if its title has one of these, else "bulky", else "regular".
 WASTE_RECYCLE_KEYWORDS: tuple[str, ...] = _env_csv(

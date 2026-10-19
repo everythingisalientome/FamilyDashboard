@@ -56,8 +56,16 @@ simplest thing that runs on the LAN and is easy to change.
   with a service account (changes made on a phone show at the next refresh, no
   hours-long ICS cache; an event's `person` tag puts it in that child's
   column), plus any number of ICS feeds (school district, ReCollect trash
-  pickup, …) discovered from `.env`. All expanded 30 days ahead (recurring
-  events included) and merged with per-source colours.
+  pickup, …) discovered from `.env`. Cached 90 days ahead (recurring events
+  included; the grid lists 30) and merged with per-source colours. Titles
+  matching `EVENT_EXCLUDE_KEYWORDS` (board meetings, bond forums) are hidden.
+- **Photo → calendar importer** (`/admin` → *Add events*, phone-sized) — paste
+  the JSON a chat model returns for a photographed daycare calendar or
+  appointment email (prompt in `docs/event-extraction-prompt.md`). The server
+  validates it, shows it for review, and writes it to the family Google
+  Calendar with deterministic ids, so pasting the same JSON twice adds nothing.
+  A rescheduled appointment can delete its predecessor. No model API is
+  called by the app.
 - **Event categories** — titles matching keyword categories are colour-coded
   (holiday = red, first-day/early-dismissal = gold, end-of-quarter = purple).
   Multi-day spans (a break week) tint their whole run of day cells as one block.
@@ -190,12 +198,12 @@ checklist is tracked in **[PLAN.md](PLAN.md)** (Phase 5).
 
 Built in phases — see **[PLAN.md](PLAN.md)** for the full plan and the build
 notes for each phase. Done: Phases 1–3 (the dashboard, calendars, weather,
-photos and alerts), Phase 6 (the animated ambient background) and Phase 7 (the
+photos and alerts), Phase 4 (photo → calendar: the Google Calendar feed and
+JSON importer), Phase 6 (the animated ambient background) and Phase 7 (the
 light per-person layout, now the default wall). Phase 5 deployment polish is
 largely complete (Windows service, Pi kiosk, admin page with feed health and
-logs, and the stale-dot). Remaining: Phase 4 (photo → calendar: the Google
-Calendar feed and JSON importer), and the last Phase 5 item, which is feed
-add/remove and a "Save & restart" button on the admin page.
+logs, and the stale-dot). Remaining: the last Phase 5 item, admin editing
+(feed add/remove and a "Save & restart" button on the admin page).
 
 ---
 
