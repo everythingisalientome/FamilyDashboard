@@ -1105,6 +1105,20 @@ the label words, since the live title has no colon ("…/Early Dismissal for
 traditional calendar students"). Live: Prisha NEXT UP Dec 18 "Early dismissal –
 End of Quarter".
 
+**Separate dismissal category (2026-10-18).** The built-in `school` category is
+split: `dismissal` (early dismissal, early release, closes, half day; order 5)
+and `school` (first/last day of school; order 20), both gold `#ffab00`.
+`EVENT_STYLE_DISMISSAL_*` works like the other categories; `.env` also sets
+`EVENT_STYLE_DISMISSAL_COLOR`. The dismissal label now keys on `category ==
+"dismissal"` exactly as the closed label keys on holiday, so the keyword-match
+special case above is gone. Order 5 puts `dismissal` ahead of `quarter` (10),
+so **Dec 18 "End of Quarter/Early Dismissal…" now tints gold, not purple**.
+(Oct 9 "End of *First* Quarter/ Early Dismissal…" was already gold: it never
+matched "end of quarter".) Deviation: "adjacent order" to school was not
+possible while also beating quarter. `CLOSURE_ALERT_CATEGORIES` stays
+`school, holiday`, so early dismissals (incl. daycare "Closes 12:00") no longer
+raise the red closure alert; add `dismissal` there to restore that.
+
 **Step 3 done (2026-10-18) — the v2 page at `/v2`.** `static/v2.html` +
 `css/v2/` (`base` tokens/fonts/frame, `header`, `hero`, `month`, `photo`) +
 `js/v2/` (`main`, `util` poll/el helpers, `format`, `date-line`, `weather`,

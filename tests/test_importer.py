@@ -92,7 +92,7 @@ def test_skipped_and_garbage_rows_are_errors_not_dropped() -> None:
 
 def test_closes_lands_in_school_and_daycare_closed_in_holiday() -> None:
     from app.event_styles import categorize
-    assert categorize("Closes 12:00 – Family Luncheon").key == "school"
+    assert categorize("Closes 12:00 – Family Luncheon").key == "dismissal"
     assert categorize("Daycare closed – Thanksgiving Day").key == "holiday"
 
 

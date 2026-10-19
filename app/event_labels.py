@@ -11,10 +11,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.config import CALENDAR_FEEDS, HERO_HOLIDAY_CATEGORIES
-from app.event_styles import EVENT_CATEGORIES
 
-#: The event_styles category whose keywords mark an early dismissal.
-DISMISSAL_CATEGORY = "school"
+#: The event_styles category of an early dismissal.
+DISMISSAL_CATEGORY = "dismissal"
 
 #: A "/" (any spacing) or a spaced hyphen / en dash — never a hyphenated word.
 _SEP = r"(?:\s*/\s*|\s+[-–]\s+)"
@@ -38,12 +37,6 @@ def labelled(title: str, label: str) -> str:
     return f"{label} – {text}" if text else label
 
 
-def _category_matches(key: str, title: str) -> bool:
-    # Any match, not just the winning category: "End of Quarter/Early
-    # Dismissal" is drawn as `quarter` but is still an early dismissal.
-    return any(c.key == key and c.matches(title) for c in EVENT_CATEGORIES)
-
-
 @dataclass(frozen=True)
 class TitleLabels:
     """Feed key -> label for each rule, plus what makes an event match it."""
@@ -60,7 +53,7 @@ class TitleLabels:
         if closed and event["category"] in self.holiday_categories:
             return labelled(title, closed)
         dismissal = self.dismissal.get(source)
-        if dismissal and _category_matches(self.dismissal_category, title):
+        if dismissal and event["category"] == self.dismissal_category:
             return labelled(title, dismissal)
         return title
 

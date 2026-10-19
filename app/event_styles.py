@@ -5,7 +5,7 @@ An event whose title matches a category's keywords (word-boundary, case
 instead of its feed's colour, and its day cells are tinted — so a multi-day
 span (a whole break week) reads as one continuous block.
 
-Three categories ship by default; every one is tunable in ``.env``, and new
+Four categories ship by default; every one is tunable in ``.env``, and new
 ones can be declared there:
 
     EVENT_STYLE_<KEY>_KEYWORDS = extra, phrases   (appended to the built-ins)
@@ -23,6 +23,14 @@ from dataclasses import dataclass
 
 #: key -> (order, colour, built-in keywords). Lower order wins on overlap.
 _DEFAULTS: dict[str, tuple[int, str, tuple[str, ...]]] = {
+    # Outranks quarter: for "End of Quarter/Early Dismissal" the early-out is
+    # what the household needs to see. Same gold as school.
+    "dismissal": (
+        5,
+        "#ffab00",  # golden-orange
+        ("early dismissal", "early release", "closes",  # "Closes 12:00 – …" (importer)
+         "half day"),
+    ),
     "quarter": (
         10,
         "#b197fc",  # purple
@@ -32,8 +40,7 @@ _DEFAULTS: dict[str, tuple[int, str, tuple[str, ...]]] = {
     "school": (
         20,
         "#ffab00",  # golden-orange
-        ("first day of school", "last day of school", "early dismissal",
-         "early release", "closes"),  # "Closes 12:00 – …" (importer early_close)
+        ("first day of school", "last day of school"),
     ),
     "holiday": (
         30,

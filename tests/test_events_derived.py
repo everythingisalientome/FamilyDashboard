@@ -3,6 +3,7 @@
 from datetime import date, datetime, timezone
 
 from app.config import Person
+from app.event_styles import categorize
 from app.event_labels import NO_LABELS, TitleLabels, labelled
 from app.events_derived import hero, radar, waste
 
@@ -142,7 +143,7 @@ def test_closed_label_without_colon() -> None:
 
 def test_dismissal_label_drops_its_own_text_after_slash() -> None:
     e = day("2026-12-18", "End of Quarter/Early Dismissal: Students dismissed at 1",
-            "school", category="quarter")  # quarter wins the colour, still labelled
+            "school", category="dismissal")
     assert LABELS.title(e) == "Early dismissal – End of Quarter"
 
 
@@ -152,12 +153,12 @@ def test_dismissal_label_drops_the_whole_part_naming_it() -> None:
 
 
 def test_dismissal_label_drops_its_own_text_before_spaced_hyphen() -> None:
-    e = day("2027-01-15", "Early Dismissal - Teacher Planning", "school", category="school")
+    e = day("2027-01-15", "Early Dismissal - Teacher Planning", "school", category="dismissal")
     assert LABELS.title(e) == "Early dismissal – Teacher Planning"
 
 
 def test_dismissal_label_when_title_lacks_it() -> None:
-    e = day("2027-02-10", "Early Release: Conferences", "school", category="school")
+    e = day("2027-02-10", "Early Release: Conferences", "school", category="dismissal")
     assert LABELS.title(e) == "Early dismissal – Early Release"
 
 
@@ -166,9 +167,18 @@ def test_label_text_in_the_middle_keeps_one_separator() -> None:
     assert labelled("Early Dismissal", "Early dismissal") == "Early dismissal"
 
 
+def test_live_categories_drive_the_dismissal_label() -> None:
+    def school(title: str) -> dict:
+        return day("2026-12-18", title, "school", category=categorize(title).key)
+
+    quarter_out = "End of Quarter/Early Dismissal for traditional calendar students"
+    assert LABELS.title(school(quarter_out)) == "Early dismissal – End of Quarter"
+    assert LABELS.title(school("First day of school")) == "First day of school"
+
+
 def test_labels_leave_unlabelled_feed_and_other_events() -> None:
     daycare = day("2026-11-03", "Daycare closed: all day", category="holiday")
-    early = day("2026-11-25", "Early Dismissal: 1pm", category="school")  # family feed
+    early = day("2026-11-25", "Early Dismissal: 1pm", category="dismissal")  # family feed
     picture = day("2026-11-05", "Picture day: 1pm", "school")
     assert LABELS.title(daycare) == "Daycare closed: all day"
     assert LABELS.title(early) == "Early Dismissal: 1pm"
@@ -179,7 +189,7 @@ def test_labels_on_hero_lines_without_mutating() -> None:
     raw = "Veterans Day: Schools Closed"
     events = [
         day("2026-10-22", "End of Quarter/Early Dismissal", "school",
-            persons=["prisha"], category="quarter"),
+            persons=["prisha"], category="dismissal"),
         day("2026-11-11", raw, "school", persons=["prisha"], category="holiday"),
     ]
     prisha = hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"}, LABELS)["persons"][0]
@@ -191,7 +201,7 @@ def test_labels_on_hero_lines_without_mutating() -> None:
 def test_radar_uses_labels() -> None:
     events = [
         day("2026-11-03", "Election Day: No School", "school", category="holiday"),
-        day("2026-11-05", "Early Dismissal: 1pm", "school", category="school"),
+        day("2026-11-05", "Early Dismissal: 1pm", "school", category="dismissal"),
     ]
     titles = [r["title"] for r in radar(events, TODAY, 30, KW, LABELS)]
     assert titles == ["School closed – Election Day", "Early dismissal"]
