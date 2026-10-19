@@ -55,23 +55,30 @@ def healthz() -> dict[str, str]:
 # The static mount serves everything else, but "/admin" (no extension) needs an
 # explicit route or the SPA-less mount can't find it. Registered before the "/"
 # mount so the catch-all doesn't swallow it.
-@app.get("/admin")
+@app.api_route("/admin", methods=["GET", "HEAD"])
 def admin_page() -> FileResponse:
-    return FileResponse(STATIC_DIR / "admin.html")
+    return _html_page("admin.html")
 
 
 # The wall: the Phase 7 light layout. Explicit so the "/" mount below never
 # falls back to index.html; "/v2" is kept as an alias (the mockup notes use it).
-@app.get("/")
-@app.get("/v2")
+@app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/v2", methods=["GET", "HEAD"])
 def wall_page() -> FileResponse:
-    return FileResponse(STATIC_DIR / "v2.html")
+    return _html_page("v2.html")
 
 
 # The previous dark wall; its assets keep their absolute /css, /js paths.
-@app.get("/v1")
+@app.api_route("/v1", methods=["GET", "HEAD"])
 def v1_page() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    return _html_page("index.html")
+
+
+# Pages are revalidated on every load, so a kiosk relaunch after a deploy never
+# shows a heuristically-cached old page. Assets under the mounts stay cacheable.
+# HEAD is routed too, or `curl -I` would fall through to the mount's index.html.
+def _html_page(name: str) -> FileResponse:
+    return FileResponse(STATIC_DIR / name, headers={"Cache-Control": "no-cache"})
 
 
 # Order matters: /api and /photos must be registered before the catch-all

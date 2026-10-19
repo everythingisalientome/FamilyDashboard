@@ -132,12 +132,13 @@ per-person wall (Phase 7). The previous dark wall is still at
 **`http://<server-ip>:8000/v1`** if the household wants it back for a day: point
 the kiosk at it, or just open it on any screen.
 
-The server doesn't send `Cache-Control` on the HTML pages, so a Chromium that
-already has the old `/` cached may keep showing it on a plain launch for up to
-about a week. A reload revalidates the page, so the wall switches at the
-nightly 3 AM self-reload. To flip it right
-away, press F5 on a keyboard plugged into the Pi. A reboot alone may not be
-enough.
+The HTML pages are served with `Cache-Control: no-cache`, so Chromium
+revalidates them on every launch and a deploy shows up on the next load. The
+exception is the **first** switch to v2. The Pi's copy of the old `/` was
+cached before that header existed, so on a plain launch it can be treated as
+fresh for up to about a week. A reload revalidates it, so the wall switches at
+the nightly 3 AM self-reload. To flip it right away, press F5 on a keyboard
+plugged into the Pi. A reboot alone may not be enough.
 
 ## 5. Uninstall
 

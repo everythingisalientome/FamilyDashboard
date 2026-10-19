@@ -1116,12 +1116,25 @@ showed only the long-standing favicon 404. 27 pytest tests pass.
   line is its own small module. There is no phone media query and no photo
   caption. Type was enlarged and the header reworked into four zones, with a
   red NEXT HOLIDAY when one is set.
-- Routing: `/v2` is kept as an alias of `/`. The HTML routes send no
-  `Cache-Control`, and v1's `index.html` was last modified on Aug 4, so a
-  Chromium that has cached the old `/` can treat it as fresh for about a week on
-  a plain navigation (seen in testing). A reload revalidates it and shows v2
-  (also verified). The kiosk's nightly 3 AM `location.reload()` does this
-  anyway. For an immediate flip, see `docs/deployment.md`.
+- Routing: `/v2` is kept as an alias of `/`. Without `Cache-Control`, a
+  Chromium that had cached the old `/` (v1's `index.html`, last modified Aug 4)
+  treated it as fresh for about a week on a plain navigation. This was seen in
+  testing, and a reload showed v2. Fixed in the follow-up below, except for a
+  copy the Pi cached before the fix (see `docs/deployment.md`).
+
+**Follow-up (2026-10-18) — no-cache pages, larger hourly slots.**
+- `/`, `/v2`, `/v1` and `/admin` now send `Cache-Control: no-cache` and answer
+  HEAD as well as GET. Before this, `curl -I /` fell through to the mount and
+  reported v1's `index.html`, and HEAD on `/v1`, `/v2` and `/admin` returned
+  404. The mounts are unchanged, so assets stay cacheable.
+- Next 6 hours: kicker 11px (was 10px; the NEXT 3 DAYS kicker was already
+  11px), slot label 17px/700, icon 36px, temperature 22px/800, gap 2px. Every
+  size fit as requested, with no icon reduction and no column change.
+- Verified at 1920×1080 on port 8001: each slot's content is 91 px tall inside
+  a 144 px area under the kicker. With 103° in all six slots, a temperature is
+  45 px wide inside a 111 px slot, and nothing sits outside its slot or zone.
+  Scroll 1920/1080. The header is 162 px with its 2 px rule at y=176. Console:
+  only the favicon 404. 27 tests pass.
 
 ---
 

@@ -11,7 +11,7 @@
 
 .header > section { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
-.kicker { font-size: 10px; font-weight: 800; letter-spacing: 2px; color: #668d9e; }
+.kicker { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #668d9e; }
 
 /* ---------- 1. clock ---------- */
 
@@ -112,9 +112,9 @@
 }
 
 .hour { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.hour .label { font-size: 15px; font-weight: 700; color: #83a5b8; }
-.hour .wx-icon { width: 30px; height: 30px; }
-.hour .temp { font-size: 18px; font-weight: 800; }
+.hour .label { font-size: 17px; font-weight: 700; color: #83a5b8; }
+.hour .wx-icon { width: 36px; height: 36px; }
+.hour .temp { font-size: 22px; font-weight: 800; }
 
 /* ---------- 4. next 3 days ---------- */
 
