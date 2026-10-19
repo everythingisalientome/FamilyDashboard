@@ -322,6 +322,25 @@ dialog still appears, `rm -rf ~/.local/share/keyrings` and reboot once. Detach t
 mouse for the final install so no cursor shows (Wayland has no simple
 `unclutter`).
 
+### Nightly Chromium restart
+
+The page reloads itself at 3 AM (`NIGHTLY_RELOAD_HOUR`), but a reload does not
+give back the memory the Chromium process has grown over days; on a Pi 3 B+ with
+1 GB that matters. So once a night, kill Chromium and let the autostart loop
+above relaunch it 5 seconds later with a fresh process. In the Pi's **user**
+crontab (`crontab -e` as the kiosk user, not root):
+```text
+5 3 * * * /usr/bin/pkill -f chromium
+```
+3:05 is after the page's own 3:00 reload and in the middle of night mode, so
+nobody sees the 5-second gap. Cron runs on the Pi's own clock, so confirm its
+timezone is the household's:
+```bash
+timedatectl                                          # "Time zone: America/New_York (EDT, -0400)"
+sudo timedatectl set-timezone America/New_York      # only if it is not
+```
+Installed on the wall Pi (`familywall`) as of 2026-10-19.
+
 ## Troubleshooting
 
 - **Service starts then stops immediately.** Read `data\logs\dashboard.err.log`.

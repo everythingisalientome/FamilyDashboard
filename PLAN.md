@@ -1305,6 +1305,67 @@ showed only the long-standing favicon 404. 27 pytest tests pass.
   Scroll 1920/1080. The header is 162 px with its 2 px rule at y=176. Console:
   only the favicon 404. 27 tests pass.
 
+**Night mode (2026-10-19) — midnight → sunrise.** Spec:
+`docs/mockups/family_dashboard_v2_night_mockup.html` (its `html.night` block).
+From `NIGHT_MODE_START` (`app/config/display.py`, default `00:00`, served as
+`night_mode_start` on `/api/settings`, in `.env.example`) until the day's
+sunrise, `<html>` carries the class `night` and the page uses a dark palette.
+Layout and type do not change.
+- `static/js/v2/night.js`: `startNight(settings)` re-checks on every minute
+  boundary in the display timezone. Sunrise is `current.sunrise_at` from the
+  weather renderer's existing `/api/weather` poll: `weather.js` hands it over
+  through `setSunrise()`, so there is no second fetch. If the cache is empty or
+  `/api/weather` fails, 06:30 is used. Wired from `main.js` like the other starters.
+- `static/css/v2/base.css`: an `html.night` token block with the mockup's
+  values, plus 25 one-line per-component overrides from the mockup's
+  `html.night` rules. The flips fade over 1.5 s
+  (`prefers-reduced-motion: no-preference` only).
+- Docs: `docs/deployment.md` §7 "Nightly Chromium restart" (Pi user crontab
+  `5 3 * * * /usr/bin/pkill -f chromium` + `timedatectl` check; installed on
+  the wall Pi 2026-10-19).
+
+Verified at 1920×1080 on port 8001, using the live cache (sunrise 07:32):
+- Day palette unchanged. With the class off (clock pinned to noon), a dump of
+  2,288 elements is byte-identical to the pre-change code. The dump covers
+  colour, background colour and image, border colours, opacity, fill, shadow,
+  font size, colour scheme and box.
+- Class forced on: screenshot `docs/mockups/v2-night-live-2026-10-19.png`, next
+  to the mockup render. Scroll is 1920/1080. Hero `#2a2300` / ink `#f3cf2e`,
+  holiday `#c9655a`, regular strip `#0d2a35`, chip 22% mix, photo opacity .72,
+  `color-scheme: dark`. 0.6 s after the flip the canvas gradient is between the
+  two palettes (a fade), and it is fully night by 3 s.
+- Fake clock: 23:59:00 → 23:59:45 day → 00:00:16 night. 07:31:00 →
+  07:31:45 night → 07:32:15 day. With `/api/weather` aborted, the page is night at
+  06:29:30 and day at 06:30.
+- Console clean. 73 tests pass.
+
+Deviations:
+- **Holiday line** is brick red `#c9655a` (as requested) through the existing
+  `--holiday-ink` token, not the mockup's `#ff7a6b`. As in the day palette, it
+  is red only when a holiday is set (`.has-holiday`). The empty state keeps the
+  gold ink. Its label is at opacity .7 as in the mockup.
+- **Background gradient**: `--bg-grad` is now built from three registered
+  colour properties (`--bg-grad-from/-mid/-to`, `@property`), because a
+  gradient cannot be transitioned. The day and night stop values are exactly
+  the mockup's. The computed day gradient is unchanged (see the dump above).
+- **Fade scope**: the transition is on `body, body *` (background-color,
+  color, border-color, opacity), plus the three gradient stops on `html`.
+  This is not just the top-level elements. Many children set their own
+  colours, and those would otherwise cut. The photo crossfade's own,
+  more-specific transition is unaffected. Inherited colours trail slightly, so
+  the whole flip settles in about 3 s, not 1.5 s. SVG icon fills cut.
+- **Mockup rules with no live target**: `.weather-metric` borders (the live
+  metrics line has none) and `.photo .center` (mapped to `.photo-empty`).
+  `.hour .symbol` maps to `--wx-fill: #8ec9e0` on the hourly icons only.
+  Person heading/details have no rule of their own. They take `--gold-ink`, as
+  in the mockup.
+- `.chip` night colours override `.chip.cat` too (same specificity outcome as
+  the mockup), so category chips become tinted rather than solid at night.
+- A `NIGHT_MODE_START` later than sunrise (e.g. `23:00`) wraps past midnight.
+  An unparseable value is treated as `00:00` (validated in config).
+- `base.css` is 211 lines, just over the ~200 guideline. It stays in one file
+  as requested.
+
 ---
 
 ## Deferred / ideas backlog

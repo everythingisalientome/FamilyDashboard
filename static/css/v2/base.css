@@ -1,6 +1,8 @@
 /* v2 wall: fonts, tokens and the fixed 1920x1080 page frame.
    Spec: docs/mockups/family_dashboard_v2_mockup.html. Fonts are vendored
-   (latin subset, variable weight) so the page never leaves this server. */
+   (latin subset, variable weight) so the page never leaves this server.
+   Night mode (html.night, set by js/v2/night.js) is at the end: tokens plus a
+   short override list from docs/mockups/family_dashboard_v2_night_mockup.html. */
 
 @font-face {
   font-family: 'Oswald';
@@ -30,7 +32,11 @@
   color-scheme: light;
 
   --bg: #e6fcff;
-  --bg-grad: linear-gradient(130deg, #eaffff, #dcfaff 65%, #dcf7ff);
+  /* The gradient's stops are registered colours (below) so night can fade. */
+  --bg-grad-from: #eaffff;
+  --bg-grad-mid: #dcfaff;
+  --bg-grad-to: #dcf7ff;
+  --bg-grad: linear-gradient(130deg, var(--bg-grad-from), var(--bg-grad-mid) 65%, var(--bg-grad-to));
   --ink: #11151c;
   --muted: #6c8290;
   --label: #7299a9;
@@ -62,6 +68,41 @@
   --f-display: 'DM Serif Display', Georgia, 'Times New Roman', serif;
   --f-num: 'Oswald', 'Arial Narrow', 'Liberation Sans Narrow', Arial, sans-serif;
   --f-body: 'DM Sans', 'Segoe UI', Arial, 'Liberation Sans', sans-serif;
+}
+
+@property --bg-grad-from { syntax: '<color>'; inherits: true; initial-value: #eaffff; }
+@property --bg-grad-mid { syntax: '<color>'; inherits: true; initial-value: #dcfaff; }
+@property --bg-grad-to { syntax: '<color>'; inherits: true; initial-value: #dcf7ff; }
+
+/* Night (midnight → sunrise): same layout and type, only the colours change. */
+html.night {
+  color-scheme: dark;
+
+  --bg: #070b10;
+  --bg-grad-from: #0a1118; /* = linear-gradient(130deg, #0a1118, #070b10 65%, #080c12) */
+  --bg-grad-mid: #070b10;
+  --bg-grad-to: #080c12;
+  --ink: #e4ebf1;
+  --muted: #8696a3;
+  --label: #6e8190;
+  --rule: #2a3845;
+  --hair: #1f2b36;
+
+  --gold: #2a2300;
+  --gold-ink: #f3cf2e;
+  --holiday-ink: #c9655a;
+  --strip-regular: #0d2a35;
+  --strip-recycle: #0f4a2c;
+  --strip-bulky: #6a3608;
+
+  --card: rgba(255, 255, 255, .045);
+  --card-edge: rgba(120, 160, 180, .14);
+  --cell: rgba(255, 255, 255, .05);
+  --cell-edge: rgba(120, 160, 180, .10);
+  --cell-out: rgba(255, 255, 255, .015);
+  --today-bg: #2a2300;
+  --today-edge: #b89400;
+  --today-ink: #f3cf2e;
 }
 
 * { box-sizing: border-box; }
@@ -133,3 +174,38 @@ body {
 
 .wx-drops { stroke: var(--wx-drop); }
 .wx-bolt { fill: var(--wx-bolt); }
+
+/* ---------- night mode: per-component overrides (mockup's html.night rules) ---------- */
+
+html.night .clock .time, html.night .degrees { color: #f2f6f9; }
+html.night .conditions, html.night .hour .temp, html.night .day-temps, html.night .day-name { color: #e4ebf1; }
+html.night .hour .label, html.night .day-name small, html.night .day-cond { color: #7f93a1; }
+html.night .hour .wx-icon { --wx-fill: #8ec9e0; }
+html.night .person + .person { border-left-color: rgba(243, 207, 46, .22); }
+html.night .holiday-line { border-top-color: rgba(243, 207, 46, .25); }
+html.night .holiday-line.has-holiday .k { opacity: .7; }
+html.night .family-line { border-top-color: rgba(243, 207, 46, .18); background: rgba(255, 255, 255, .06); color: #e4ebf1; }
+html.night .family-line .k { color: #8ed9cc; }
+html.night .month-heading h2 { color: #e4ebf1; }
+html.night .month-heading h2 span { color: #6e8190; }
+html.night .month-summary { border-color: #1f3a49; background: #122733; color: #dbe7ee; }
+html.night .weekday { color: #6e8190; }
+html.night .num { color: #dbe7ee; }
+html.night .cell.outside .num { color: #4d5e6b; }
+html.night .today-tag { color: #d8b400; }
+html.night .chip { background: color-mix(in srgb, var(--c) 22%, #0000); color: #dbe7ee; }
+html.night .chip b { color: #9fb6c4; }
+html.night .cell.tint { background: color-mix(in srgb, var(--tint) 24%, var(--cell)); }
+html.night .month-footer { color: #8696a3; }
+html.night .month-footer strong { color: #b8c7d1; }
+html.night .radar b { color: #e4ebf1; }
+html.night .legend { color: #9fb6c4; }
+html.night .photo { opacity: .72; }
+html.night .photo-empty { color: #9fb6c4; }
+
+/* The flips at midnight and sunrise fade instead of cutting. Rules with their
+   own transition (the photo crossfade) are more specific and keep it. */
+@media (prefers-reduced-motion: no-preference) {
+  html { transition: --bg-grad-from 1.5s ease, --bg-grad-mid 1.5s ease, --bg-grad-to 1.5s ease; }
+  body, body * { transition: background-color 1.5s ease, color 1.5s ease, border-color 1.5s ease, opacity 1.5s ease; }
+}

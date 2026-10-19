@@ -3,6 +3,7 @@
 
 import { todayIso } from '../dates.js';
 import { monthDayUpper, weekdayUpper } from './format.js';
+import { setSunrise } from './night.js';
 import { el, poll, setText, symbolHref, wxIcon } from './util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,6 +19,7 @@ export function startWeather(settings) {
 function render(data) {
   const today = todayIso(timeZone);
   const daily = data.daily ?? [];
+  setSunrise(data.current?.sunrise_at);
   if (data.current) renderCurrent(data.current, daily.find((d) => d.date === today));
   if (data.hourly?.length) $('wx-hourly').replaceChildren(...data.hourly.slice(0, 6).map(hourSlot));
   const ahead = daily.filter((d) => d.date > today).slice(0, DAYS_SHOWN);

@@ -7,6 +7,7 @@ import { scheduleNightlyReload } from '../reload.js';
 import { startDateLine } from './date-line.js';
 import { renderHero } from './hero.js';
 import { renderMonth } from './month.js';
+import { startNight } from './night.js';
 import { poll } from './util.js';
 import { startWeather } from './weather.js';
 
@@ -15,6 +16,7 @@ const DEFAULTS = {
   photo_interval_seconds: 60,
   photo_list_refresh_seconds: 1800,
   nightly_reload_hour: 3,
+  night_mode_start: '00:00',
   data_refresh_seconds: 300,
 };
 
@@ -34,6 +36,7 @@ const settings = await loadSettings();
 
 startClock(settings.timezone);
 startDateLine(settings.timezone);
+startNight(settings);
 scheduleNightlyReload(settings.timezone, settings.nightly_reload_hour);
 startSlideshow({
   intervalSeconds: settings.photo_interval_seconds,

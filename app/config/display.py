@@ -1,6 +1,7 @@
 """What the page shows and how often: display timezone, photos, the v1
 highlights ticker, the v2 hero/radar/waste tunables and polling/timeouts."""
 
+import re
 from zoneinfo import ZoneInfo
 
 from app.config.env import _env_csv, _env_float, _env_int, _env_str
@@ -12,6 +13,12 @@ DISPLAY_TZ: ZoneInfo = ZoneInfo(DISPLAY_TZ_NAME)
 
 #: Hour (local) at which the browser reloads itself to shed leaks / stale JS.
 NIGHTLY_RELOAD_HOUR: int = 3
+
+#: v2 wall night mode: the dark palette runs from this local "HH:MM" until
+#: the day's sunrise (the end is always sunrise). Unparseable means midnight.
+NIGHT_MODE_START: str = _env_str("NIGHT_MODE_START", "00:00")
+if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", NIGHT_MODE_START):
+    NIGHT_MODE_START = "00:00"
 
 # --- Photos ----------------------------------------------------------------
 
