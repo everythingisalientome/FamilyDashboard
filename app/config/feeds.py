@@ -29,6 +29,9 @@ class CalendarFeed:
     #: feed read "<label> – <title before its first ':'>" on the hero's NEXT
     #: HOLIDAY line and the radar. Grid chips keep the raw title.
     closed_label: str = ""
+    #: The same for early-dismissal events (``CAL_<KEY>_DISMISSAL_LABEL``); the
+    #: label text already in the title is dropped (app/event_labels.py).
+    dismissal_label: str = ""
 
 
 #: Every ICS feed is a capability URL (anyone holding it can read the
@@ -94,9 +97,12 @@ def _feed_entry(raw_key: str, key: str, url: str) -> tuple[int, str, CalendarFee
     color = os.getenv(f"CAL_{raw_key}_COLOR", "").strip()
     alert_color = os.getenv(f"CAL_{raw_key}_ALERT_COLOR", "").strip()
     closed_label = os.getenv(f"CAL_{raw_key}_CLOSED_LABEL", "").strip()
+    dismissal = os.getenv(f"CAL_{raw_key}_DISMISSAL_LABEL", "").strip()
     order_raw = os.getenv(f"CAL_{raw_key}_ORDER", "").strip()
     order = int(order_raw) if order_raw.lstrip("-").isdigit() else 100
-    return order, key, CalendarFeed(key, label, url, color, alert_color, closed_label)
+    return order, key, CalendarFeed(
+        key, label, url, color, alert_color, closed_label, dismissal
+    )
 
 
 def _load_calendar_feeds() -> tuple[CalendarFeed, ...]:

@@ -6,13 +6,12 @@ Pure functions over the API's own event dicts (``source``, ``title``,
 all-day first, then start time — so "earliest" is simply "first in the list".
 """
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection
 from datetime import date, datetime, timedelta
 from typing import Any
 
 from app.alert_rules import matches_trash
 from app.config import (
-    CALENDAR_FEEDS,
     EVENT_EXCLUDE_KEYWORDS,
     FAMILY_FEEDS,
     HERO_HOLIDAY_CATEGORIES,
@@ -23,14 +22,12 @@ from app.config import (
     WASTE_RECYCLE_KEYWORDS,
     Person,
 )
+from app.event_labels import FEED_LABELS, TitleLabels
 
 Event = dict[str, Any]
 
 #: Most entries the "On the radar" footer can hold.
 RADAR_MAX = 8
-
-#: Feed key -> CAL_<KEY>_CLOSED_LABEL, for the feeds that set one.
-CLOSED_LABELS: dict[str, str] = {f.key: f.closed_label for f in CALENDAR_FEEDS if f.closed_label}
 
 
 def is_excluded(title: str | None, keywords: tuple[str, ...] = EVENT_EXCLUDE_KEYWORDS) -> bool:
@@ -47,22 +44,13 @@ def is_upcoming(event: Event, today: date, now: datetime) -> bool:
     return datetime.fromisoformat(ends) >= now
 
 
-def closed_title(
-    event: Event,
-    labels: Mapping[str, str] = CLOSED_LABELS,
-    holiday_categories: Collection[str] = HERO_HOLIDAY_CATEGORIES,
-) -> str:
-    """Hero/radar title: "<label> – <title before its first ':'>" for a holiday
-    from a feed with a closed label, else the raw title."""
-    label = labels.get(event["source"])
-    if not label or event["category"] not in holiday_categories:
-        return event["title"]
-    return f"{label} – {event['title'].split(':', 1)[0].strip()}"
-
-
 def _first(events: list[Event], count: int = 1) -> list[Event | None]:
     """The first ``count`` events, padded with None."""
     return (events[:count] + [None] * count)[:count]
+
+
+def _titled(event: Event | None, labels: TitleLabels) -> Event | None:
+    return {**event, "title": labels.title(event)} if event else None
 
 
 # --- Hero ------------------------------------------------------------------
@@ -75,13 +63,13 @@ def hero(
     roster: tuple[Person, ...] = PERSONS,
     family_feeds: Collection[str] = FAMILY_FEEDS,
     holiday_categories: Collection[str] = HERO_HOLIDAY_CATEGORIES,
-    closed_labels: Mapping[str, str] = CLOSED_LABELS,
+    labels: TitleLabels = FEED_LABELS,
 ) -> dict[str, Any]:
     """Per-person NEXT UP / NEXT HOLIDAY for the first two persons, plus the
     family line (family-feed events that matched nobody).
 
-    NEXT UP skips holidays — they already show on the NEXT HOLIDAY line, whose
-    event carries its closed-label title (a copy; the grid's event is untouched).
+    NEXT UP skips holidays — they already show on the NEXT HOLIDAY line. Both
+    carry their per-feed label title (a copy; the grid's event is untouched).
     """
     upcoming = [e for e in events if is_upcoming(e, today, now)]
 
@@ -91,9 +79,11 @@ def hero(
         holidays = [e for e in pool if e["category"] in holiday_categories]
         (nxt,) = _first([e for e in pool if e["category"] not in holiday_categories])
         (holiday,) = _first(holidays)
-        if holiday:
-            holiday = {**holiday, "title": closed_title(holiday, closed_labels, holiday_categories)}
-        columns.append({"key": person.key, "next": nxt, "next_holiday": holiday})
+        columns.append({
+            "key": person.key,
+            "next": _titled(nxt, labels),
+            "next_holiday": _titled(holiday, labels),
+        })
 
     family = [e for e in upcoming if e["source"] in family_feeds and not e["persons"]]
     nxt, following = _first(family, 2)
@@ -108,13 +98,12 @@ def radar(
     today: date,
     days: int = RADAR_DAYS,
     keywords: tuple[str, ...] = RADAR_KEYWORDS,
-    closed_labels: Mapping[str, str] = CLOSED_LABELS,
-    holiday_categories: Collection[str] = HERO_HOLIDAY_CATEGORIES,
+    labels: TitleLabels = FEED_LABELS,
 ) -> list[dict[str, Any]]:
     """Keyword events overlapping today..today+days, one per (start, title).
 
     Matching (and dedupe) use the raw title, a case-insensitive substring as for
-    the v1 highlights ticker; the entry shows its closed-label title.
+    the v1 highlights ticker; the entry shows its per-feed label title.
     Spans are returned whole; the page collapses them to "Nov 26–27".
     """
     start, end = today.isoformat(), (today + timedelta(days=days)).isoformat()
@@ -136,7 +125,7 @@ def radar(
             {
                 "start_date": e["start_date"],
                 "end_date": e["end_date"],
-                "title": closed_title(e, closed_labels, holiday_categories),
+                "title": labels.title(e),
                 "category": e["category"],
             }
         )

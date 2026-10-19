@@ -1095,6 +1095,15 @@ the hero next_holiday and radar entries (a copy; grid chips and the raw title
 are unchanged). Radar keyword matching/dedupe still use the raw title. Live:
 Prisha next_holiday "School closed – Uncapped Workday/Election Day", next Dec
 18; Prapti next Nov 25 early close, next_holiday Nov 11.
+The twin `CAL_<KEY>_DISMISSAL_LABEL` (`.env`: `CAL_SCHOOL_DISMISSAL_LABEL=Early
+dismissal`) labels early-dismissal events on NEXT UP / NEXT HOLIDAY and the radar;
+both rules live in `app/event_labels.py` (`labelled`, `TitleLabels`). Deviations:
+the dismissal rule fires when the title *matches* the `school` category, not only
+when it wins — "End of Quarter/Early Dismissal" is drawn as `quarter` (order 10).
+Cleaning drops the whole "/"- or " - "-separated part naming the label, not just
+the label words, since the live title has no colon ("…/Early Dismissal for
+traditional calendar students"). Live: Prisha NEXT UP Dec 18 "Early dismissal –
+End of Quarter".
 
 **Step 3 done (2026-10-18) — the v2 page at `/v2`.** `static/v2.html` +
 `css/v2/` (`base` tokens/fonts/frame, `header`, `hero`, `month`, `photo`) +

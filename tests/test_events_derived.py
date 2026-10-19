@@ -3,7 +3,8 @@
 from datetime import date, datetime, timezone
 
 from app.config import Person
-from app.events_derived import closed_title, hero, radar, waste
+from app.event_labels import NO_LABELS, TitleLabels, labelled
+from app.events_derived import hero, radar, waste
 
 PRISHA = Person("prisha", "Prisha", "#19b2d8", 1, ("school",), ("prisha",))
 PRAPTI = Person("prapti", "Prapti", "#bc39bd", 2, (), ("prapti",))
@@ -38,7 +39,7 @@ def timed(start_utc: str, end_utc: str, title: str, persons: list[str]) -> dict:
 
 
 def run_hero(events: list[dict]) -> dict:
-    return hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"}, {})
+    return hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"}, NO_LABELS)
 
 
 # --- hero --------------------------------------------------------------------
@@ -119,50 +120,81 @@ def test_family_pool_is_family_feed_events_matching_nobody() -> None:
     assert family["following"]["title"] == "Pumpkin patch"
 
 
-# --- closed label ------------------------------------------------------------
+# --- per-feed labels -----------------------------------------------------
 
-LABELS = {"school": "School closed"}
+LABELS = TitleLabels(
+    closed={"school": "School closed"},
+    dismissal={"school": "Early dismissal"},
+    holiday_categories={"holiday"},
+)
 
 
 def test_closed_label_strips_colon_tail() -> None:
     e = day("2026-11-03", "Uncapped Workday/Election Day: No School for Students",
             "school", category="holiday")
-    assert closed_title(e, LABELS, {"holiday"}) == (
-        "School closed – Uncapped Workday/Election Day"
-    )
+    assert LABELS.title(e) == "School closed – Uncapped Workday/Election Day"
 
 
 def test_closed_label_without_colon() -> None:
     e = day("2026-11-11", "Veterans Day", "school", category="holiday")
-    assert closed_title(e, LABELS, {"holiday"}) == "School closed – Veterans Day"
+    assert LABELS.title(e) == "School closed – Veterans Day"
 
 
-def test_closed_label_leaves_unlabelled_feed_and_non_holidays() -> None:
-    family = day("2026-11-03", "Daycare closed: all day", category="holiday")
-    school = day("2026-11-05", "Early dismissal: 1pm", "school")
-    assert closed_title(family, LABELS, {"holiday"}) == "Daycare closed: all day"
-    assert closed_title(school, LABELS, {"holiday"}) == "Early dismissal: 1pm"
+def test_dismissal_label_drops_its_own_text_after_slash() -> None:
+    e = day("2026-12-18", "End of Quarter/Early Dismissal: Students dismissed at 1",
+            "school", category="quarter")  # quarter wins the colour, still labelled
+    assert LABELS.title(e) == "Early dismissal – End of Quarter"
 
 
-def test_closed_label_on_hero_holiday_only() -> None:
+def test_dismissal_label_drops_the_whole_part_naming_it() -> None:
+    live = "End of Quarter/Early Dismissal for traditional calendar students"
+    assert labelled(live, "Early dismissal") == "Early dismissal – End of Quarter"
+
+
+def test_dismissal_label_drops_its_own_text_before_spaced_hyphen() -> None:
+    e = day("2027-01-15", "Early Dismissal - Teacher Planning", "school", category="school")
+    assert LABELS.title(e) == "Early dismissal – Teacher Planning"
+
+
+def test_dismissal_label_when_title_lacks_it() -> None:
+    e = day("2027-02-10", "Early Release: Conferences", "school", category="school")
+    assert LABELS.title(e) == "Early dismissal – Early Release"
+
+
+def test_label_text_in_the_middle_keeps_one_separator() -> None:
+    assert labelled("A / Early Dismissal / B", "Early dismissal") == "Early dismissal – A / B"
+    assert labelled("Early Dismissal", "Early dismissal") == "Early dismissal"
+
+
+def test_labels_leave_unlabelled_feed_and_other_events() -> None:
+    daycare = day("2026-11-03", "Daycare closed: all day", category="holiday")
+    early = day("2026-11-25", "Early Dismissal: 1pm", category="school")  # family feed
+    picture = day("2026-11-05", "Picture day: 1pm", "school")
+    assert LABELS.title(daycare) == "Daycare closed: all day"
+    assert LABELS.title(early) == "Early Dismissal: 1pm"
+    assert LABELS.title(picture) == "Picture day: 1pm"
+
+
+def test_labels_on_hero_lines_without_mutating() -> None:
     raw = "Veterans Day: Schools Closed"
     events = [
-        day("2026-10-22", "Picture day: bring smile", "school", persons=["prisha"]),
+        day("2026-10-22", "End of Quarter/Early Dismissal", "school",
+            persons=["prisha"], category="quarter"),
         day("2026-11-11", raw, "school", persons=["prisha"], category="holiday"),
     ]
     prisha = hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"}, LABELS)["persons"][0]
-    assert prisha["next"]["title"] == "Picture day: bring smile"
+    assert prisha["next"]["title"] == "Early dismissal – End of Quarter"
     assert prisha["next_holiday"]["title"] == "School closed – Veterans Day"
     assert events[1]["title"] == raw  # the grid's event is not mutated
 
 
-def test_radar_uses_closed_label() -> None:
+def test_radar_uses_labels() -> None:
     events = [
         day("2026-11-03", "Election Day: No School", "school", category="holiday"),
-        day("2026-11-05", "Early Dismissal: 1pm", "school"),
+        day("2026-11-05", "Early Dismissal: 1pm", "school", category="school"),
     ]
-    titles = [r["title"] for r in radar(events, TODAY, 30, KW, LABELS, {"holiday"})]
-    assert titles == ["School closed – Election Day", "Early Dismissal: 1pm"]
+    titles = [r["title"] for r in radar(events, TODAY, 30, KW, LABELS)]
+    assert titles == ["School closed – Election Day", "Early dismissal"]
 
 
 # --- radar -------------------------------------------------------------------
@@ -179,7 +211,7 @@ def test_radar_window_and_keyword_match() -> None:
         day("2026-11-20", "Holiday party"),                     # day 30: in
         day("2026-11-21", "Holiday market"),                    # day 31: out
     ]
-    titles = [r["title"] for r in radar(events, TODAY, 30, KW, {})]
+    titles = [r["title"] for r in radar(events, TODAY, 30, KW, NO_LABELS)]
     assert titles == ["No School week", "Early Dismissal", "Holiday party"]
 
 
@@ -188,7 +220,7 @@ def test_radar_dedupes_by_start_and_title() -> None:
         day("2026-11-26", "Thanksgiving Holiday", "school", end="2026-11-27"),
         day("2026-11-26", "Thanksgiving Holiday", "family", end="2026-11-27"),
     ]
-    assert radar(events, TODAY, 40, KW, {}) == [
+    assert radar(events, TODAY, 40, KW, NO_LABELS) == [
         {"start_date": "2026-11-26", "end_date": "2026-11-27",
          "title": "Thanksgiving Holiday", "category": None}
     ]
@@ -196,7 +228,7 @@ def test_radar_dedupes_by_start_and_title() -> None:
 
 def test_radar_caps_at_eight_chronological() -> None:
     events = [day(f"2026-10-{d}", f"Holiday {d}") for d in range(22, 32)]
-    titles = [r["title"] for r in radar(events, TODAY, 30, KW, {})]
+    titles = [r["title"] for r in radar(events, TODAY, 30, KW, NO_LABELS)]
     assert titles == [f"Holiday {d}" for d in range(22, 30)]
 
 
