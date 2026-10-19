@@ -1,0 +1,78 @@
+/* Admin page chrome: the top-level tabs, the page-wide restart banner, the
+   in-page modal and the restarting overlay. */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 18px 0 8px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab {
+  flex: none;
+  padding: 10px 16px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.admin a.tab { color: var(--muted); }
+.admin a.tab:hover { color: var(--text); }
+.admin a.tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+.panel > section:first-child h2 { margin-top: 18px; }
+
+.restart-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: rgba(116, 192, 252, 0.12);
+  font-weight: 600;
+}
+.restart-banner[hidden] { display: none; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(14, 17, 22, 0.75);
+  z-index: 30;
+}
+.modal[hidden] { display: none; }
+.modal-box {
+  width: min(440px, 100%);
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.modal-box p { margin: 0 0 16px; }
+.modal-buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+.env-restarting {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  font-size: 1.2rem;
+  background: rgba(14, 17, 22, 0.88);
+  z-index: 40;
+}
+.env-restarting[hidden] { display: none; }
+
+@media (max-width: 699px) {
+  .tab { padding: 10px 12px; }
+  .modal-buttons .imp-btn { flex: 1 1 auto; }
+}

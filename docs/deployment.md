@@ -58,9 +58,10 @@ When it finishes it prints the dashboard and admin URLs and the log location.
   double every scheduled fetch.
 - **Start = auto (at boot).**
 - **`AppEnvironmentExtra FAMILY_WALL_SERVICE=1`.** Tells the admin page it is
-  running under NSSM, which enables its **Save & restart** button (it exits the
-  process and NSSM's restart-on-exit relaunches it). A dev server lacks the
-  marker, so the button is disabled there and the page says to restart by hand.
+  running under NSSM, which enables the **Restart now** button on its "Settings
+  saved — restart to apply" banner (it exits the process and NSSM's
+  restart-on-exit relaunches it). A dev server lacks the marker, so the button is
+  disabled there with a tooltip saying to restart by hand.
 - **Restart on exit**, with a 2 s delay and a 5 s throttle so a crash-on-boot
   can't spin into a tight restart loop.
 - **Logs** → `data\logs\dashboard.out.log` and `dashboard.err.log`, rotated
@@ -86,7 +87,8 @@ Invoke-RestMethod http://localhost:8000/healthz   # -> status = ok
 ```
 
 Then browse from another device on the LAN to `http://<server-ip>:8000/` (the
-wall display) and `http://<server-ip>:8000/admin` (feed health + manual refresh).
+wall display) and `http://<server-ip>:8000/admin` (tabs: Status · Add events ·
+Settings · Logs; `#status`, `#events`, `#settings`, `#logs` link straight to one).
 Find `<server-ip>` with `ipconfig`.
 
 ## 4. Day-to-day operations
@@ -118,29 +120,39 @@ nssm edit FamilyDashboard
 
 ### Editing settings from `/admin`
 
-The admin page's **Settings (.env)** section edits the same `.env` (no second
-config store): every `.env.example` key by section with its help text, add /
-remove a calendar feed or person, and a drift banner for keys `.env.example`
-has that `.env` lacks ("Add with defaults" stages them). Changes are staged in
-the page, then:
+The admin page's **Settings** tab edits the same `.env` (no second config
+store). It has one sub-tab per `.env.example` section. Values are shown
+read-only with their help text; ✎ turns a row into an input, ✓ stages that
+one edit and ✕ cancels it. The Calendar feeds and Persons sub-tabs also have
+an **Add calendar feed** / **Add person** helper. Each helper stages only its
+fixed `CAL_<key>_*` / `PERSON_<key>_*` keys, where `<key>` is lowercase letters
+and digits and must not already exist. Each feed or person also has a
+**Remove** button. There is no way to type an arbitrary new key.
 
-- **Review** shows each `KEY: old → new` and a **dry-run**: a fresh Python
-  imports `app.config` from the candidate file in strict mode (a bad number,
-  colour, URL, `HH:MM` or calendar schedule fails it). Nothing is written.
-- **Save** re-runs the dry-run, and only if it passes copies the current file
-  to `data\env-backups\.env.<UTC stamp>` (the last 10 are kept) and replaces
-  `.env` atomically. It never writes a file that failed the dry-run.
-- **Save & restart** does the same, then exits the process ~1 s later so NSSM
-  relaunches it with the new settings; the page waits for the new process and
-  reloads itself. The wall keeps showing cached data throughout.
+- **Save** (per sub-tab) dry-runs the change: a fresh Python imports
+  `app.config` from the candidate file in strict mode (a bad number, colour,
+  URL, `HH:MM` or calendar schedule fails it, and the error is shown inline).
+  Only if it passes is the current file copied to
+  `data\env-backups\.env.<UTC stamp>` (the last 10 are kept) and `.env`
+  replaced atomically. Only the staged keys change; every other line is left
+  byte-for-byte. **Revert** drops that sub-tab's staged edits.
+- Leaving a sub-tab or the Settings tab with staged edits asks **Save /
+  Discard / Stay** in the page, and closing the page warns too.
+- The **drift banner** lists `.env.example` keys that `.env` lacks; **Add
+  missing keys with defaults** writes them (same dry-run + backup) in one click.
+- Whenever `.env` on disk differs from the one the server booted with, a
+  banner above the tabs says **Settings saved — restart to apply**. **Restart
+  now** exits the process so NSSM relaunches it; the page waits for the new
+  process and reloads itself. The wall keeps showing cached data throughout.
+  Hand edits to `.env` raise the banner too.
 
 Each save is logged (`dashboard.admin`) with the changed keys; values of
 `*_URL` and `GCAL_*` keys are redacted in the log line.
 
 **One-time after upgrading to this version:** re-run
 `.\scripts\install-service.ps1` (elevated) once so the service gets the
-`FAMILY_WALL_SERVICE=1` marker; until then Save & restart stays disabled and
-you restart with `nssm restart FamilyDashboard` after Save.
+`FAMILY_WALL_SERVICE=1` marker. Until then **Restart now** stays disabled, so
+run `nssm restart FamilyDashboard` yourself after saving.
 
 **If a save ever bricks the config**, restore the newest good backup and
 restart:
@@ -387,8 +399,10 @@ Installed on the wall Pi (`familywall`) as of 2026-10-19.
   Common causes: the venv is missing a dependency, or the port is already in use.
 - **Dashboard shows defaults / no feeds.** `.env` is missing from the repo root
   (or `APP_DOTENV_PATH` points elsewhere), or a value is unparseable and fell
-  back to its default — open `/admin` → Settings, stage any change and Review:
-  the dry-run checks the whole file, not just the changed key. A bad save can be undone from `data\env-backups\`.
+  back to its default. To find a bad value, open `/admin` → Settings, stage
+  any harmless change and Save. The dry-run checks the whole file, not just the
+  changed key, so it names the bad value and writes nothing. A bad save can be
+  undone from `data\env-backups\`.
 - **The Pi can't reach it.** Check the firewall rule exists and that the server's
   network is set to **Private** (not Public) in Windows network settings. Confirm
   the server's IP with `ipconfig` and that both devices are on the same subnet.

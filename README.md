@@ -84,13 +84,15 @@ simplest thing that runs on the LAN and is easy to change.
 - **Alerts** (`/v1`): a shiny pill along the bottom of the photo panel rotates through
   active NWS weather alerts, school closures, trash reminders and per-calendar
   alerts, without ever pushing the layout.
-- **Admin page** — `/admin` (LAN-only, no login) lists every feed with its
-  last-fetch time, status, source URL and recent errors, a button to refresh any
-  fetcher on demand, and the app log (view the current day, download older days).
-  Its **Settings (.env)** section edits `.env` itself — every setting with its
-  help text, add/remove calendar feeds and persons, a drift banner for keys
-  missing from `.env` — with a dry-run before any write, a backup per save
-  (`data/env-backups/`), and **Save & restart** under the NSSM service.
+- **Admin page** — `/admin` (LAN-only, no login) has four tabs. **Status**
+  lists every feed with its last-fetch time, status, source URL and recent
+  errors, plus a button to refresh any fetcher on demand. **Add events** is the
+  importer. **Settings** edits `.env` itself: one sub-tab per section, each value
+  read-only until you click ✎, add/remove calendar feeds and persons, and a
+  drift banner for keys missing from `.env`. Every save is dry-run first and
+  backed up (`data/env-backups/`). **Logs** views the current day's log and
+  downloads older days. A "restart to apply" banner offers **Restart now** under
+  the NSSM service.
 - **Resilience** — every fetcher is independent and swallows its own errors;
   one dead feed never blanks the others or the page. The browser reloads itself
   nightly to shed any leaks. The app keeps a rotating daily log under
@@ -207,7 +209,7 @@ photos and alerts), Phase 4 (photo → calendar: the Google Calendar feed and
 JSON importer), Phase 6 (the animated ambient background) and Phase 7 (the
 light per-person layout, now the default wall). Phase 5 deployment polish is
 complete (Windows service, Pi kiosk, admin page with feed health, logs and
-`.env` editing with Save & restart, and the stale-dot).
+tabbed `.env` editing with a restart banner, and the stale-dot).
 
 ---
 

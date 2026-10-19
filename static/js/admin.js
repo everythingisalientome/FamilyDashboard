@@ -4,8 +4,12 @@
 const POLL_MS = 5000;
 const LOG_TAIL_LINES = 800;
 
+// Poll only what is on screen: the status table on Status, the log on Logs.
 async function refreshAll() {
-  await Promise.all([loadStatus(), loadLogs(), loadLogFiles()]);
+  if (document.hidden) return;
+  const tab = window.AdminTabs.current();
+  if (tab === "status") await loadStatus();
+  if (tab === "logs") await Promise.all([loadLogs(), loadLogFiles()]);
 }
 
 // --- Status ----------------------------------------------------------------
@@ -102,14 +106,16 @@ function renderRows(jobs) {
 }
 
 async function removeJob(job, btn) {
-  if (!window.confirm(`Clear orphaned job "${job}"?`)) return;
+  const answer = await window.AdminTabs.ask(`Clear orphaned job "${job}"?`,
+    [{ id: "clear", label: "Clear", primary: true }, { id: "cancel", label: "Cancel" }], "cancel");
+  if (answer !== "clear") return;
   btn.disabled = true;
   try {
     const res = await fetch(`/api/admin/jobs/${encodeURIComponent(job)}`, {
       method: "DELETE",
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    loadStatus();
+    refreshAll();
   } catch (err) {
     btn.textContent = `failed: ${err.message}`;
     btn.disabled = false;
@@ -237,6 +243,7 @@ function note(msg) {
 function start() {
   refreshAll();
   setInterval(refreshAll, POLL_MS);
+  window.addEventListener("admin:tab", refreshAll); // fresh data on tab switch
 }
 
 start();

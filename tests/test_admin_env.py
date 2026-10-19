@@ -88,3 +88,34 @@ def test_redaction_hides_urls_and_gcal_values() -> None:
                                 "PHOTO_INTERVAL_SECONDS": "15", "CAL_X_LABEL": None})
     assert "secret" not in line and "=id" not in line
     assert "PHOTO_INTERVAL_SECONDS=15" in line and "CAL_X_LABEL=<removed>" in line
+
+
+def test_save_of_a_subset_leaves_every_other_line_untouched(env: Path, client: TestClient) -> None:
+    text = ENV_TEXT + "# keep me\r\nCAL_SCHOOL_COLOR=#74c0fc  # inline\r\n\r\nFORECAST_DAYS=4\r\n"
+    env.write_bytes(text.encode())
+    res = client.post("/api/admin/env/save", json={"changes": {"FORECAST_DAYS": "5"}})
+    assert res.json()["data"]["ok"] is True
+    assert env.read_bytes() == text.replace("FORECAST_DAYS=4", "FORECAST_DAYS=5").encode()
+
+
+def test_hashes_show_a_saved_but_unapplied_env(
+    env: Path, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(env_admin, "LOADED_HASH", env_admin.file_hash())
+    before = client.get("/api/admin/env").json()["data"]
+    assert before["env_loaded_hash"] == before["env_file_hash"] != ""
+    client.post("/api/admin/env/save", json={"changes": {"PHOTO_INTERVAL_SECONDS": "15"}})
+    after = client.get("/api/admin/env").json()["data"]
+    assert after["env_loaded_hash"] == before["env_loaded_hash"]
+    assert after["env_file_hash"] != after["env_loaded_hash"]
+
+
+def test_restart_endpoint_refuses_outside_nssm(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    exits: list[bool] = []
+    monkeypatch.setattr(env_admin, "exit_soon", lambda: exits.append(True))
+    monkeypatch.delenv("FAMILY_WALL_SERVICE", raising=False)
+    data = client.post("/api/admin/restart").json()["data"]
+    assert data == {"restarting": False, "note": "restart the dev server by hand"}
+    monkeypatch.setenv("FAMILY_WALL_SERVICE", "1")
+    assert client.post("/api/admin/restart").json()["data"] == {"restarting": True}
+    assert exits == [True]

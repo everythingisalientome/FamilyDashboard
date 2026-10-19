@@ -6,6 +6,7 @@ fresh interpreter can import ``app.config`` from the candidate file in strict
 mode — a typo is refused here rather than discovered by a wall that won't boot.
 """
 
+import hashlib
 import logging
 import os
 import re
@@ -20,7 +21,7 @@ from typing import Any
 
 from app import env_file
 from app.config import BASE_DIR, DATA_DIR
-from app.config.env import DOTENV_PATH
+from app.config.env import DOTENV_PATH, DOTENV_SHA256
 from app.env_file import Entry
 
 log = logging.getLogger("dashboard.admin")
@@ -29,6 +30,7 @@ ENV_PATH: Path = DOTENV_PATH
 EXAMPLE_PATH: Path = BASE_DIR / ".env.example"
 BACKUP_DIR: Path = DATA_DIR / "env-backups"
 KEEP_BACKUPS = 10
+LOADED_HASH: str = DOTENV_SHA256
 DRY_RUN_TIMEOUT = 20
 
 _GROUP_RE = re.compile(
@@ -45,6 +47,11 @@ def read(path: Path) -> list[Entry]:
         return []
     with path.open(encoding="utf-8", newline="") as fh:
         return env_file.parse(fh.read())
+
+
+def file_hash() -> str:
+    """sha256 of .env as it is on disk now ("" if missing)."""
+    return hashlib.sha256(ENV_PATH.read_bytes()).hexdigest() if ENV_PATH.is_file() else ""
 
 
 def can_restart() -> bool:
@@ -90,6 +97,8 @@ def view() -> dict[str, Any]:
         "drift": env_file.diff(current, example),
         "env_path": str(ENV_PATH),
         "can_restart": can_restart(),
+        "env_loaded_hash": LOADED_HASH,
+        "env_file_hash": file_hash(),
     }
 
 

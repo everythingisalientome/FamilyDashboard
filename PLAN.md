@@ -781,8 +781,54 @@ admin now imports it, so the board and the dot can't disagree on "stale."
   its heading) and each key's `group` (`CAL_<KEY>` / `PERSON_<KEY>`) for the
   Remove buttons. Keys in `.env` that `.env.example` lacks are placed by prefix
   (`CAL_`, `PERSON_`, …), or under "Other".
-- `env_admin.py` is 205 lines, just over the ~200 guide, and kept as one file
+- `env_admin.py` is now 214 lines, just over the ~200 guide, and kept as one file
   because it is a single cohesive flow.
+
+**Pass 7 done (admin rework: tabs, read-first settings, restart banner)** —
+verified 2026-10-19 on 8001 at 1280 px and 390 px.
+- `/admin` has hash-routed tabs: Status (default) · Add events · Settings ·
+  Logs (`#status`, `#events`, `#settings`, `#logs`; Back/Forward work). The
+  existing sections moved under their tabs unchanged. The status table is
+  polled only while Status is visible, and the log only while Logs is.
+- Settings: one sub-tab per `.env.example` section. Values are shown
+  read-only, and ✎ → input → ✓ / ✕ stages or cancels one edit, with ↺ to undo
+  a staged one. A per-sub-tab footer has "N staged" + Save
+  (`/validate` → `/save`, `restart:false`, dry-run failure shown inline) +
+  Revert. Leaving a sub-tab or the Settings tab with staged edits opens an
+  in-page Save / Discard / Stay modal (no `window.confirm`), and there is a
+  `beforeunload` guard too. Drift: "Add missing keys with defaults" writes in
+  one click. The Add calendar feed / Add person helpers live in their
+  sub-tabs, stage only template keys, and require a key matching `^[a-z0-9]+$`
+  that doesn't already exist. Remove asks through the modal. There is no
+  free-form key entry.
+- Restart: `GET /api/admin/env` adds `env_loaded_hash` (sha256 of `.env` at
+  boot, taken in `app/config/env.py` as it loads) and `env_file_hash` (now).
+  When they differ, a banner above the tabs says "Settings saved — restart to
+  apply" with **Restart now** → new `POST /api/admin/restart` (same exit + NSSM
+  relaunch and `can_restart` gate; disabled with a tooltip off NSSM). The
+  page then polls `/healthz` for a new boot id and reloads. Save & restart is
+  gone from the UI; `/save`'s `restart` flag is kept for API compatibility.
+- Tests: subset save leaves every other line byte-identical, the hash fields
+  diverge after a save, and `/restart` refuses outside NSSM.
+- Verified: routing incl. Back; poll gating (fetch counts per tab); ✎/✓ on
+  two Weather keys → Save changed exactly those two `.env` lines; Revert;
+  Stay/Discard on a sub-tab switch and Stay (tab click and hash change) /
+  Save on a top-level switch; beforeunload armed; `WEATHER_LAT=abc` refused
+  inline; helper key rules; Remove → modal; drift add appended the 9 keys under
+  the dated comment; no page overflow on any tab at 390 px. With NSSM simulated
+  on 8002: no banner at boot → banner after "Add missing keys" → Restart now →
+  exit 0, relaunch, page reloaded, banner gone. Dev `.env` restored afterwards.
+
+**Deviations** (Pass 7):
+- **Admin assets carry `?v=N`.** The page is served `no-cache`, but `/js` and
+  `/css` are not, and during verification the browser paired the new HTML with a
+  heuristically cached old `admin.js`. Bump `?v=` in `admin.html` whenever an
+  admin JS/CSS file changes. (A server-side no-cache for assets would also fix
+  it, but the brief limited backend changes.)
+- The orphan-job "✕ clear" confirm on the Status tab also moved to the in-page
+  modal, for the same kiosk-reliability reason.
+- On a run of keys sharing one `.env.example` comment block, the help text is
+  shown once (on the first key), not repeated on every row.
 
 **Already in place** (reuse, don't rebuild):
 - Adding/removing a feed already works without code: set `CAL_<KEY>_URL` in

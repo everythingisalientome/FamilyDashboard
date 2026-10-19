@@ -4,6 +4,7 @@ Imported first by every other config module, so ``.env`` is loaded before any
 setting is read.
 """
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -17,6 +18,12 @@ BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
 _DOTENV_RAW = os.getenv("APP_DOTENV_PATH", "").strip()
 DOTENV_PATH: Path = BASE_DIR / (_DOTENV_RAW or ".env")
 load_dotenv(DOTENV_PATH)
+
+#: sha256 of the .env this process booted with. The admin page compares it with
+#: the file now to say "settings saved — restart to apply".
+DOTENV_SHA256: str = (
+    hashlib.sha256(DOTENV_PATH.read_bytes()).hexdigest() if DOTENV_PATH.is_file() else ""
+)
 
 #: Set only by the admin dry-run: an unparseable number raises instead of
 #: falling back, so a typo is refused before it is saved (boot stays lenient).

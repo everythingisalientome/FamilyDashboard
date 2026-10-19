@@ -44,3 +44,12 @@ def admin_env_save(body: EnvChanges) -> dict[str, Any]:
                                   "note": "restart the dev server by hand"})
     env_admin.exit_soon()
     return envelope(result | {"restarting": True})
+
+
+@router.post("/admin/restart")
+def admin_restart() -> dict[str, Any]:
+    """Exit so NSSM relaunches us (applies a saved .env). Only under NSSM."""
+    if not env_admin.can_restart():
+        return envelope({"restarting": False, "note": "restart the dev server by hand"})
+    env_admin.exit_soon()
+    return envelope({"restarting": True})
