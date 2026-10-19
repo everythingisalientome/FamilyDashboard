@@ -70,6 +70,6 @@ TRASH_REMINDER_HOUR: int = _env_int("TRASH_REMINDER_HOUR", 17)
 #: matcher — no second keyword list.
 CLOSURE_ALERT_CATEGORIES: frozenset[str] = frozenset(
     c.strip().lower()
-    for c in _env_str("CLOSURE_ALERT_CATEGORIES", "school, holiday").split(",")
+    for c in _env_str("CLOSURE_ALERT_CATEGORIES", "school, holiday, dismissal").split(",")
     if c.strip()
 )

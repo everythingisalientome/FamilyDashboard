@@ -1116,8 +1116,9 @@ so **Dec 18 "End of Quarter/Early Dismissal…" now tints gold, not purple**.
 (Oct 9 "End of *First* Quarter/ Early Dismissal…" was already gold: it never
 matched "end of quarter".) Deviation: "adjacent order" to school was not
 possible while also beating quarter. `CLOSURE_ALERT_CATEGORIES` stays
-`school, holiday`, so early dismissals (incl. daycare "Closes 12:00") no longer
-raise the red closure alert; add `dismissal` there to restore that.
+`school, holiday` in that commit; the follow-up "alerts: include dismissal
+category" makes the default (and `.env`) `school, holiday, dismissal`, so early
+dismissals (incl. daycare "Closes 12:00") raise the red closure alert again.
 
 **Step 3 done (2026-10-18) — the v2 page at `/v2`.** `static/v2.html` +
 `css/v2/` (`base` tokens/fonts/frame, `header`, `hero`, `month`, `photo`) +
