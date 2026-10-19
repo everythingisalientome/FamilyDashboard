@@ -36,12 +36,13 @@ def get(url: str) -> dict[str, Any]:
 
 
 def resolve_grid() -> dict[str, str]:
-    """The forecast and station-list URLs for the configured coordinates."""
+    """The forecast, hourly-forecast and station-list URLs for the configured coordinates."""
     global _grid
     if _grid is None:
         props = get(f"{API}/points/{WEATHER_LAT},{WEATHER_LON}")["properties"]
         _grid = {
             "forecast": props["forecast"],
+            "hourly": props["forecastHourly"],
             "stations": props["observationStations"],
         }
         log.info("NWS grid resolved: %s", props.get("gridId"))

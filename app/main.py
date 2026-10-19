@@ -60,6 +60,20 @@ def admin_page() -> FileResponse:
     return FileResponse(STATIC_DIR / "admin.html")
 
 
+# The wall: the Phase 7 light layout. Explicit so the "/" mount below never
+# falls back to index.html; "/v2" is kept as an alias (the mockup notes use it).
+@app.get("/")
+@app.get("/v2")
+def wall_page() -> FileResponse:
+    return FileResponse(STATIC_DIR / "v2.html")
+
+
+# The previous dark wall; its assets keep their absolute /css, /js paths.
+@app.get("/v1")
+def v1_page() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
 # Order matters: /api and /photos must be registered before the catch-all
 # static mount at "/", or the mount would swallow them.
 app.include_router(api_router, prefix="/api")

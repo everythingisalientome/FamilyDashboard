@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Wall v2 Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: fixed 1920x1080 wall composition — header band, then left column (hero + month grid) and right photo column.
+   Single deliberate light look (the household's chosen mockup); production vendors the fonts locally. */
+:root{
+  --bg:#e6fcff; --bg-grad:linear-gradient(130deg,#eaffff,#dcfaff 65%,#dcf7ff);
+  --ink:#11151c; --muted:#6c8290; --label:#7299a9; --rule:#263744; --hair:#a9dce5;
+  --gold:#f7cf00; --gold-ink:#0d1518;
+  --prisha:#19b2d8; --prapti:#bc39bd; --family:#15bea8; --school:#5b7fa3; --trash:#7cb342;
+  --holiday:#ff6b6b; --dismissal:#ffab00; --quarter:#b197fc;
+  --strip-regular:#164d60; --strip-recycle:#1f9d55; --strip-bulky:#e07a1f;
+  --card:rgba(255,255,255,.30); --card-edge:rgba(103,168,185,.21);
+  --cell:rgba(255,255,255,.43); --cell-edge:rgba(92,163,180,.12); --cell-out:rgba(255,255,255,.10);
+  --today-bg:#fff9de; --today-edge:#e4b900; --today-ink:#a97900;
+  --f-display:'DM Serif Display',Georgia,serif;
+  --f-num:'Oswald','Arial Narrow',sans-serif;
+  --f-body:'DM Sans',Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-variant-numeric:tabular-nums}
+
+.dashboard{
+  width:100%;max-width:1920px;height:100%;margin:0 auto;
+  padding-block:16px 17px;
+  padding-left:max(20px,env(safe-area-inset-left,0px));
+  padding-right:max(20px,env(safe-area-inset-right,0px));
+  background:var(--bg-grad);
+  display:grid;grid-template-rows:162px minmax(0,1fr);gap:9px;overflow:hidden;
+}
+
+/* ---------- header ---------- */
+.header{display:grid;grid-template-columns:minmax(260px,.78fr) minmax(0,2.22fr);gap:28px;min-height:0}
+.header>section{display:flex;flex-direction:column;min-width:0}
+.rule{height:2px;background:var(--rule);margin-top:auto;flex-shrink:0}
+.clock .time{font-family:var(--f-num);font-size:120px;font-weight:600;letter-spacing:-5px;line-height:.98;white-space:nowrap}
+.clock .ampm{font-size:22px;letter-spacing:0;vertical-align:top;display:inline-block;padding-top:9px;margin-left:6px}
+.date{font-weight:800;text-transform:uppercase;letter-spacing:1.3px;font-size:15px;margin-top:5px}
+.date span{font-family:var(--f-display);text-transform:none;font-weight:400;letter-spacing:0;font-size:21px;color:var(--muted);margin-left:5px}
+
+.weather-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;align-items:start;flex:1;min-height:0}
+.weather-left{min-width:0}
+.weather-current{display:flex;align-items:center;gap:12px;min-height:64px}
+.wx-glyph{font-size:39px;line-height:1}
+.degrees{font-family:var(--f-num);font-size:62px;font-weight:500;letter-spacing:-2px;line-height:1}
+.degrees small{font-family:var(--f-body);font-size:18px;font-weight:600;letter-spacing:0;color:var(--muted);margin-left:4px}
+.conditions{font-weight:800;font-size:13px;line-height:1.2}
+.conditions small{display:block;color:var(--label);font-size:11px;margin-top:4px;letter-spacing:2px}
+.weather-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 9px}
+.weather-metric{display:flex;align-items:baseline;gap:8px;white-space:nowrap;border-right:1px solid #b6dee7;padding-right:8px}
+.weather-metric:last-child{border:0}
+.weather-metric>span:first-child{font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--label)}
+.weather-metric .metric-value{font-size:10px;color:var(--label)}
+.hourly{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}
+.hour{display:flex;flex-direction:column;align-items:center;gap:1px}
+.hour .label{font-size:11px;color:#83a5b8;font-weight:700}
+.hour .symbol{font-size:18px;line-height:1.15;color:#87d5ec}
+.hour .temp{font-size:13px;font-weight:800}
+.weather-right{border-left:1px solid var(--hair);padding:2px 0 0 24px;min-width:0}
+.days-title{color:#668d9e;font-size:11px;font-weight:800;letter-spacing:2px;margin-bottom:9px}
+.daily{display:grid;gap:7px}
+.day-row{display:grid;grid-template-columns:minmax(83px,1fr) 32px minmax(90px,1.25fr) auto;gap:9px;align-items:center}
+.day-name{font-size:13px;font-weight:800;white-space:nowrap}
+.day-name small{display:block;color:#86acba;font-size:10px;letter-spacing:.7px;margin-top:2px}
+.day-symbol{font-size:19px;text-align:center}
+.day-cond{font-size:12px;color:#668d9e;white-space:nowrap}
+.day-temps{font-family:var(--f-num);font-size:19px;white-space:nowrap}
+.day-temps small{font-size:16px;color:#8aa7b5;margin-left:5px}
+
+/* ---------- lower ---------- */
+.lower{display:grid;grid-template-columns:minmax(0,1.43fr) minmax(0,.7fr);gap:12px;min-height:0}
+.left-column{display:grid;grid-template-rows:262px minmax(0,1fr);gap:9px;min-width:0;min-height:0}
+
+/* hero */
+.hero{
+  background:var(--gold);color:var(--gold-ink);border-radius:20px;overflow:hidden;
+  box-shadow:0 4px 8px #a6a2944d;
+  display:grid;grid-template-rows:minmax(0,1fr) auto auto;min-height:0;
+}
+.kids{display:grid;grid-template-columns:1fr 1fr;min-height:0}
+.person{min-width:0;padding:16px 24px 12px;display:flex;flex-direction:column;overflow:hidden}
+.person+.person{border-left:1px solid rgba(13,21,24,.22)}
+.person-heading{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:800;letter-spacing:1.5px}
+.person-dot{width:11px;height:11px;border-radius:50%;background:var(--pc)}
+.next-label{font-size:10px;font-weight:700;letter-spacing:1.1px;opacity:.55;margin-left:auto}
+.person-title{margin-top:12px;font-family:var(--f-display);font-size:42px;line-height:1.12;letter-spacing:-.9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person-details{margin-top:8px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sep{opacity:.6;padding:0 3px}
+.holiday-line{margin-top:auto;padding-top:10px;display:flex;align-items:baseline;gap:10px;white-space:nowrap;overflow:hidden;border-top:1px dashed rgba(13,21,24,.25)}
+.holiday-line .k{font-size:10px;font-weight:800;letter-spacing:1.1px;opacity:.6}
+.holiday-line .when{font-family:var(--f-num);font-size:22px;font-weight:600;letter-spacing:-.3px}
+.holiday-line .what{font-size:16px;font-weight:750;overflow:hidden;text-overflow:ellipsis}
+
+.family-line{
+  display:flex;align-items:center;gap:12px;padding:0 24px;height:36px;
+  background:rgba(255,255,255,.55);border-top:1px solid rgba(13,21,24,.18);
+  white-space:nowrap;overflow:hidden;font-size:13px;
+}
+.family-line .fam-dot{width:11px;height:11px;border-radius:50%;background:var(--family);flex:none}
+.family-line .k{font-size:11px;font-weight:800;letter-spacing:1.5px}
+.family-line .when{font-weight:800}
+.family-line .what{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.family-line .then{opacity:.6;font-size:11px;font-weight:800;letter-spacing:1px;margin-left:6px}
+
+.waste-strip{
+  display:flex;align-items:center;gap:11px;padding:0 17px;height:40px;
+  background:var(--strip);color:#fff;white-space:nowrap;overflow:hidden;font-size:12px;
+}
+.waste-strip[data-week="regular"]{--strip:var(--strip-regular)}
+.waste-strip[data-week="recycle"]{--strip:var(--strip-recycle)}
+.waste-strip[data-week="bulky"]{--strip:var(--strip-bulky)}
+.waste-strip strong{font-size:10px;letter-spacing:.6px}
+.waste-day{font-weight:800}
+.waste-type{font-weight:700}
+.waste-divider{height:14px;border-left:1px solid rgba(255,255,255,.42)}
+.waste-extra{overflow:hidden;text-overflow:ellipsis}
+.waste-state{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.7px;opacity:.85;display:flex;gap:6px;align-items:center}
+.waste-state i{width:9px;height:9px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.7)}
+
+/* month grid */
+.calendar{
+  background:var(--card);border:1px solid var(--card-edge);border-radius:18px;
+  padding:8px 11px 7px;box-shadow:0 7px 25px rgba(39,117,130,.055);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+}
+.month-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;flex:0 0 auto}
+.month-heading h2{font-family:var(--f-display);font-size:30px;font-weight:400;letter-spacing:-.7px;line-height:1.15;margin:2px 0 0}
+.month-heading h2 span{font-family:var(--f-body);font-size:12px;color:#7da2b2;font-weight:500;letter-spacing:0}
+.month-summary{display:flex;align-items:center;gap:9px;background:#d4f6f7;border:1px solid #b4e4e9;border-radius:13px;padding:4px 9px;color:#132d3b}
+.month-summary strong{font-family:var(--f-num);font-size:25px;font-weight:500;line-height:1}
+.month-summary span{font-size:8px;font-weight:800;letter-spacing:1px;line-height:1.55}
+.month-grid{flex:1 1 0;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:18px repeat(var(--weeks,5),minmax(0,1fr));gap:3px}
+.weekday{text-align:center;padding:2px 0 4px;font-size:10px;font-weight:800;letter-spacing:1.1px;color:#6695a7}
+.cell{min-width:0;min-height:0;height:100%;background:var(--cell);border:1px solid var(--cell-edge);border-radius:9px;padding:5px;overflow:hidden;display:flex;flex-direction:column}
+.cell.outside{background:var(--cell-out);border-color:transparent}
+.cell.outside .num{color:#8fb0bd}
+.cell.today{background:var(--today-bg);border:2px solid var(--today-edge);box-shadow:0 0 0 2px rgba(255,210,0,.11);padding:4px}
+.cell.tint{background:color-mix(in srgb,var(--tint) 18%,var(--cell))}
+.day-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.num{font-family:var(--f-num);font-size:16px;line-height:1;color:#132331}
+.today .num{color:var(--today-ink)}
+.today-tag{font-size:7px;font-weight:800;color:#856800;letter-spacing:.5px}
+.more{font-size:9px;font-weight:800;color:#52798b}
+.events{display:flex;flex-direction:column;gap:3px;min-height:0;overflow:hidden}
+.chip{display:flex;align-items:center;gap:4px;min-width:0;border-radius:4px;padding:3px 3px;font-size:9px;font-weight:700;line-height:1.1;color:#1a3540;background:color-mix(in srgb,var(--c) 14%,#fff0)}
+.chip i{width:5px;height:5px;flex:none;border-radius:50%;background:var(--c)}
+.chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip b{font-weight:800;color:#3f667d;margin-right:2px}
+.chip.cat{color:#fff;background:var(--c)}
+.chip.cat b{color:#fff}
+.c-prisha{--c:var(--prisha)} .c-prapti{--c:var(--prapti)} .c-family{--c:var(--family)}
+.c-school{--c:var(--school)} .c-trash{--c:var(--trash)}
+.c-holiday{--c:var(--holiday)} .c-dismissal{--c:var(--dismissal)} .c-quarter{--c:var(--quarter)}
+.month-footer{flex:0 0 auto;display:flex;align-items:center;gap:7px;margin-top:5px;min-height:21px;font-size:10px;color:#52798b;line-height:1.3;white-space:nowrap;overflow:hidden}
+.footer-accent{width:16px;height:3px;background:#e1ae00;border-radius:6px;flex:none}
+.month-footer strong{font-size:9px;letter-spacing:.8px;color:#284b59}
+.radar{overflow:hidden;text-overflow:ellipsis}
+.radar b{color:#132331}
+.legend{margin-left:auto;display:flex;gap:11px;font-size:10px;font-weight:700;color:#426879}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+
+/* photo column */
+.right-column{display:grid;min-height:0;min-width:0}
+.photo{
+  border-radius:20px;overflow:hidden;position:relative;min-height:0;height:100%;
+  background:linear-gradient(160deg,#052e54,#05182a 65%,#010309);
+}
+.photo .frame{position:absolute;inset:0;background:
+  radial-gradient(ellipse at 30% 25%,rgba(135,213,236,.35),transparent 55%),
+  radial-gradient(ellipse at 75% 70%,rgba(247,207,0,.18),transparent 50%)}
+.photo .caption{position:absolute;inset:auto 0 0 0;padding:14px 18px;background:linear-gradient(0deg,#000a,transparent);color:#fff;display:flex;justify-content:space-between;align-items:baseline}
+.photo .caption b{font-weight:800;letter-spacing:1px;font-size:12px}
+.photo .caption i{font-family:var(--f-display);font-style:italic;font-size:19px}
+.photo .center{position:absolute;inset:0;display:grid;place-items:center;color:#cfeaf3;text-align:center;font-size:13px;letter-spacing:1px;text-transform:uppercase;opacity:.8}
+
+/* phone fallback so the mockup can be opened anywhere; the wall is 1920x1080 */
+@media(max-width:1100px){
+  html,body{overflow:auto}
+  .dashboard{height:auto;grid-template-rows:auto auto}
+  .header{grid-template-columns:1fr;height:auto}
+  .clock .time{font-size:72px}
+  .weather-layout{grid-template-columns:1fr}
+  .weather-right{border-left:0;border-top:1px solid var(--hair);padding:12px 0 0}
+  .lower{grid-template-columns:1fr}
+  .left-column{grid-template-rows:auto auto}
+  .hero{min-height:280px}
+  .kids{grid-template-columns:1fr}
+  .person+.person{border-left:0;border-top:1px solid rgba(13,21,24,.22)}
+  .person-title{font-size:28px}
+  .month-grid{grid-auto-rows:84px}
+  .photo{min-height:260px}
+  .legend{display:none}
+}
+</style>
+</head>
+<body>
+<main class="dashboard">
+  <header class="header">
+    <section class="clock">
+      <div class="time">10:43<span class="ampm">AM</span></div>
+      <div class="date">SUNDAY <span>October 18</span></div>
+      <div class="rule"></div>
+    </section>
+    <section class="weather">
+      <div class="weather-layout">
+        <div class="weather-left">
+          <div class="weather-current">
+            <div class="wx-glyph">☀</div>
+            <div class="degrees">52°<small>(11°C)</small></div>
+            <div class="conditions">CLEAR<small>H 66°   L 40°</small></div>
+          </div>
+          <div class="weather-metrics">
+            <div class="weather-metric"><span>FEELS LIKE</span><span class="metric-value">52°</span></div>
+            <div class="weather-metric"><span>HUMIDITY</span><span class="metric-value">47%</span></div>
+            <div class="weather-metric"><span>UV INDEX</span><span class="metric-value">5 Moderate</span></div>
+          </div>
+          <div class="hourly">
+            <div class="hour"><span class="label">11 AM</span><span class="symbol">☀</span><span class="temp">55°</span></div>
+            <div class="hour"><span class="label">12 PM</span><span class="symbol">☀</span><span class="temp">59°</span></div>
+            <div class="hour"><span class="label">1 PM</span><span class="symbol">☀</span><span class="temp">62°</span></div>
+            <div class="hour"><span class="label">2 PM</span><span class="symbol">☀</span><span class="temp">64°</span></div>
+            <div class="hour"><span class="label">3 PM</span><span class="symbol">⛅</span><span class="temp">66°</span></div>
+            <div class="hour"><span class="label">4 PM</span><span class="symbol">⛅</span><span class="temp">65°</span></div>
+          </div>
+        </div>
+        <div class="weather-right">
+          <div class="days-title">NEXT 3 DAYS</div>
+          <div class="daily">
+            <div class="day-row"><span class="day-name">MON <small>OCT 19</small></span><span class="day-symbol">☀</span><span class="day-cond">Sunny</span><span class="day-temps">66° <small>42°</small></span></div>
+            <div class="day-row"><span class="day-name">TUE <small>OCT 20</small></span><span class="day-symbol">☀</span><span class="day-cond">Sunny</span><span class="day-temps">73° <small>44°</small></span></div>
+            <div class="day-row"><span class="day-name">WED <small>OCT 21</small></span><span class="day-symbol">⛅</span><span class="day-cond">Partly cloudy</span><span class="day-temps">70° <small>44°</small></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="rule"></div>
+    </section>
+  </header>
+
+  <section class="lower">
+    <div class="left-column">
+      <article class="hero" aria-label="Next up">
+        <div class="kids">
+          <section class="person" style="--pc:var(--prisha)" aria-label="Prisha">
+            <div class="person-heading"><span class="person-dot"></span> PRISHA <span class="next-label">NEXT UP</span></div>
+            <div class="person-title">School Bond Community Forum</div>
+            <div class="person-details">Thu Oct 22 <span class="sep">·</span> 6:30 PM <span class="sep">·</span> H.E. Winkler MS</div>
+            <div class="holiday-line"><span class="k">NEXT HOLIDAY</span><span class="when">Wed, Nov 11</span><span class="what">Veterans Day · No school</span></div>
+          </section>
+          <section class="person" style="--pc:var(--prapti)" aria-label="Prapti">
+            <div class="person-heading"><span class="person-dot"></span> PRAPTI <span class="next-label">NEXT UP</span></div>
+            <div class="person-title">Well Child visit</div>
+            <div class="person-details">Tue Nov 10 <span class="sep">·</span> 8:40 AM <span class="sep">·</span> Rocky River Peds</div>
+            <div class="holiday-line"><span class="k">NEXT HOLIDAY</span><span class="when">Wed, Nov 11</span><span class="what">Daycare closed · Veterans Day</span></div>
+          </section>
+        </div>
+        <div class="family-line" aria-label="Family">
+          <span class="fam-dot"></span><span class="k">FAMILY</span>
+          <span class="when">SAT · OCT 31</span><span class="what">Trick-or-treat with the Shahs</span>
+          <span class="then">THEN</span><span class="when">SUN · NOV 8</span><span class="what">Grandma's birthday call</span>
+        </div>
+        <div class="waste-strip" data-week="regular" aria-label="Waste collection">
+          <span aria-hidden="true">▤</span>
+          <strong>NEXT COLLECTION</strong>
+          <span class="waste-day">WED · OCT 21</span>
+          <span class="waste-type">Yard Waste · Garbage</span>
+          <span class="waste-divider"></span>
+          <span class="waste-extra">Then Mon Oct 26 · Loose Leaf week</span>
+          <span class="waste-state"><i style="background:var(--strip-regular)"></i> REGULAR WEEK</span>
+        </div>
+      </article>
+
+      <section class="calendar" aria-label="October 2026">
+        <div class="month-heading">
+          <h2>October <span>2026</span></h2>
+          <div class="month-summary"><strong>18</strong><span>SUNDAY<br>TODAY</span></div>
+        </div>
+        <div class="month-grid" style="--weeks:5">
+          <div class="weekday">SUN</div><div class="weekday">MON</div><div class="weekday">TUE</div><div class="weekday">WED</div><div class="weekday">THU</div><div class="weekday">FRI</div><div class="weekday">SAT</div>
+
+          <div class="cell outside"><div class="day-top"><span class="num">27</span></div><div class="events"></div></div>
+          <div class="cell outside"><div class="day-top"><span class="num">28</span></div><div class="events"><div class="chip c-school"><i></i><span><b>6 PM</b>Board of Education</span></div></div></div>
+          <div class="cell outside"><div class="day-top"><span class="num">29</span></div><div class="events"></div></div>
+          <div class="cell outside"><div class="day-top"><span class="num">30</span></div><div class="events"><div class="chip c-trash"><i></i><span>Yard Waste · Bulky Waste · Garbage</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">1</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">2</span></div><div class="events"><div class="chip c-family"><i></i><span>Dinner at the Mehtas</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">3</span></div><div class="events"></div></div>
+
+          <div class="cell"><div class="day-top"><span class="num">4</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">5</span></div><div class="events"><div class="chip c-school"><i></i><span><b>6 PM</b>Board of Education</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">6</span></div><div class="events"><div class="chip c-school"><i></i><span><b>6:30 PM</b>CCS School Bond Forum</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">7</span></div><div class="events"><div class="chip c-trash"><i></i><span>HHW Collection · Garbage</span></div><div class="chip c-prapti"><i></i><span>Daycare photos</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">8</span></div><div class="events"></div></div>
+          <div class="cell tint" style="--tint:var(--quarter)"><div class="day-top"><span class="num">9</span></div><div class="events"><div class="chip cat c-quarter"><i></i><span>End of First Quarter</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">10</span></div><div class="events"><div class="chip c-prisha"><i></i><span><b>10 AM</b>Soccer game</span></div></div></div>
+
+          <div class="cell"><div class="day-top"><span class="num">11</span></div><div class="events"></div></div>
+          <div class="cell tint" style="--tint:var(--holiday)"><div class="day-top"><span class="num">12</span></div><div class="events"><div class="chip cat c-holiday"><i></i><span>Uncapped Teacher Workday</span></div><div class="chip c-prapti"><i></i><span>Daycare closed · Indigenous Peoples' Day</span></div></div></div>
+          <div class="cell tint" style="--tint:var(--holiday)"><div class="day-top"><span class="num">13</span></div><div class="events"><div class="chip cat c-holiday"><i></i><span>Capped Teacher Workday</span></div><div class="chip c-school"><i></i><span><b>5 PM</b>CCS Futures</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">14</span></div><div class="events"><div class="chip c-trash"><i></i><span>Yard Waste · Bulky Waste · Garbage</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">15</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">16</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">17</span></div><div class="events"><div class="chip c-trash"><i></i><span>HHW Collection</span></div></div></div>
+
+          <div class="cell today"><div class="day-top"><span class="num">18</span><span class="today-tag">TODAY</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">19</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">20</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">21</span></div><div class="events"><div class="chip c-trash"><i></i><span>Yard Waste · Garbage</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">22</span></div><div class="events"><div class="chip c-school"><i></i><span><b>6:30 PM</b>CCS School Bond Forum</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">23</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">24</span></div><div class="events"><div class="chip c-trash"><i></i><span>Safe disposal (shred) event</span></div><div class="chip c-prisha"><i></i><span><b>2 PM</b>Piano recital</span></div></div></div>
+
+          <div class="cell"><div class="day-top"><span class="num">25</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">26</span></div><div class="events"><div class="chip c-trash"><i></i><span>Loose Leaf · Day 1</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">27</span></div><div class="events"><div class="chip c-trash"><i></i><span>Loose Leaf · Day 2</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">28</span></div><div class="events"><div class="chip c-trash"><i></i><span>Loose Leaf · Day 3</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">29</span></div><div class="events"><div class="chip c-trash"><i></i><span>Loose Leaf · Day 4</span></div><div class="chip c-school"><i></i><span><b>6 PM</b>Board of Education</span></div></div></div>
+          <div class="cell"><div class="day-top"><span class="num">30</span></div><div class="events"></div></div>
+          <div class="cell"><div class="day-top"><span class="num">31</span></div><div class="events"><div class="chip c-family"><i></i><span>Trick-or-treat with the Shahs</span></div></div></div>
+        </div>
+        <div class="month-footer">
+          <span class="footer-accent"></span>
+          <strong>ON THE RADAR</strong>
+          <span class="radar"><b>Nov 11</b> Veterans Day &nbsp;·&nbsp; <b>Nov 25</b> Early Dismissal &nbsp;·&nbsp; <b>Nov 26–27</b> Thanksgiving Break</span>
+          <div class="legend">
+            <span class="c-prisha"><i></i>Prisha</span>
+            <span class="c-prapti"><i></i>Prapti</span>
+            <span class="c-family"><i></i>Family</span>
+            <span class="c-school"><i></i>School</span>
+            <span class="c-trash"><i></i>Trash</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="right-column">
+      <article class="photo" aria-label="Photo slideshow">
+        <div class="frame"></div>
+        <div class="center">Photo slideshow<br>crossfades every 10 s</div>
+        <div class="caption"><b>FAMILY PHOTOS</b><i>from the shared album</i></div>
+      </article>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,139 @@
+/* Header band: four zones in one row — clock, now, next 6 hours, next 3
+   days — sharing one bottom rule (the header's own border). */
+
+.header {
+  display: grid;
+  grid-template-columns: .62fr .72fr 1.35fr .95fr;
+  gap: 28px;
+  min-height: 0;
+  border-bottom: 2px solid var(--rule);
+}
+
+.header > section { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+.kicker { font-size: 10px; font-weight: 800; letter-spacing: 2px; color: #668d9e; }
+
+/* ---------- 1. clock ---------- */
+
+.clock { justify-content: flex-end; padding-bottom: 9px; }
+
+.clock .time {
+  font-family: var(--f-num);
+  font-size: 96px;
+  font-weight: 600;
+  letter-spacing: -4px;
+  line-height: .98;
+  white-space: nowrap;
+}
+
+.clock .ampm {
+  display: inline-block;
+  margin-left: 6px;
+  padding-top: 7px;
+  vertical-align: top;
+  font-size: 20px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.date {
+  margin-top: 5px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.date-sep { margin: 0 7px; font-weight: 400; color: var(--muted); }
+
+.date-day {
+  font-family: var(--f-display);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+/* ---------- 2. now ---------- */
+
+.now { justify-content: center; gap: 6px; }
+
+.weather-current { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+
+.wx-glyph { width: 36px; height: 36px; }
+
+.degrees {
+  font-family: var(--f-num);
+  font-size: 48px;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.degrees small {
+  margin-left: 6px;
+  font-family: var(--f-body);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.conditions {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conditions small { margin-left: 8px; font-size: 12px; font-weight: 600; text-transform: none; color: var(--muted); }
+
+/* One line: "FEELS LIKE 55°  ·  HUMIDITY 38%  ·  UV 5 Moderate". */
+.weather-metrics { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.weather-metric > span:first-child { margin-right: 4px; font-size: 12px; font-weight: 800; letter-spacing: .3px; color: var(--label); }
+.weather-metric .metric-value { font-size: 14px; color: var(--ink); }
+.weather-metric + .weather-metric::before { content: '·'; padding: 0 7px; font-size: 14px; color: var(--label); }
+
+/* ---------- 3. next 6 hours ---------- */
+
+.hours { padding-top: 2px; }
+
+.hourly {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  align-content: center;
+}
+
+.hour { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hour .label { font-size: 15px; font-weight: 700; color: #83a5b8; }
+.hour .wx-icon { width: 30px; height: 30px; }
+.hour .temp { font-size: 18px; font-weight: 800; }
+
+/* ---------- 4. next 3 days ---------- */
+
+.days { padding: 2px 0 0 24px; border-left: 1px solid var(--hair); }
+
+.days-title { margin-bottom: 9px; font-size: 11px; }
+
+.daily { display: grid; gap: 7px; }
+
+.day-row {
+  display: grid;
+  grid-template-columns: minmax(83px, 1fr) 32px minmax(90px, 1.25fr) auto;
+  gap: 9px;
+  align-items: center;
+}
+
+.day-name { font-size: 13px; font-weight: 800; white-space: nowrap; }
+.day-name small { display: block; margin-top: 2px; font-size: 10px; letter-spacing: .7px; color: #86acba; }
+.day-row .wx-icon { width: 24px; height: 24px; justify-self: center; }
+.day-cond { font-size: 12px; color: #668d9e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-temps { font-family: var(--f-num); font-size: 19px; white-space: nowrap; }
+.day-temps small { margin-left: 5px; font-size: 16px; color: #8aa7b5; }

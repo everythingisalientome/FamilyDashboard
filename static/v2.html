@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1">
+  <title>Family Dashboard</title>
+  <link rel="preload" href="/fonts/oswald-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/dm-serif-display-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/v2/base.css">
+  <link rel="stylesheet" href="/css/v2/header.css">
+  <link rel="stylesheet" href="/css/v2/hero.css">
+  <link rel="stylesheet" href="/css/v2/month.css">
+  <link rel="stylesheet" href="/css/v2/photo.css">
+</head>
+<body>
+<main class="dashboard">
+
+  <!-- Four zones in one row; the bottom rule is the header's own border. -->
+  <header class="header">
+    <section class="clock" aria-label="Time and date">
+      <!-- #time / #meridiem are filled by the shared js/clock.js. -->
+      <div class="time"><span id="time">--:--</span><span id="meridiem" class="ampm"></span></div>
+      <div class="date"><span id="date-weekday"></span><span class="date-sep">·</span><span id="date-day" class="date-day"></span></div>
+    </section>
+
+    <section class="now" aria-label="Current weather">
+      <div class="weather-current">
+        <svg class="wx-icon wx-glyph"><use id="wx-now-icon" href="#wx-clear"></use></svg>
+        <div class="degrees"><span id="wx-now-temp">--°</span><small id="wx-now-temp-c"></small></div>
+      </div>
+      <div class="conditions"><span id="wx-now-cond"></span><small id="wx-now-hilo"></small></div>
+      <div class="weather-metrics">
+        <span class="weather-metric"><span>FEELS LIKE</span><span id="wx-feels" class="metric-value">--</span></span>
+        <span class="weather-metric"><span>HUMIDITY</span><span id="wx-humidity" class="metric-value">--</span></span>
+        <span class="weather-metric"><span>UV</span><span id="wx-uv" class="metric-value">--</span></span>
+      </div>
+    </section>
+
+    <section class="hours" aria-label="Next 6 hours">
+      <div class="kicker">NEXT 6 HOURS</div>
+      <div id="wx-hourly" class="hourly"></div>
+    </section>
+
+    <section class="days" aria-label="Next 3 days">
+      <div class="kicker days-title">NEXT 3 DAYS</div>
+      <div id="wx-daily" class="daily"></div>
+    </section>
+  </header>
+
+  <section class="lower">
+    <div class="left-column">
+      <article class="hero" aria-label="Next up">
+        <div id="hero-kids" class="kids"></div>
+        <div id="family-line" class="family-line" aria-label="Family">
+          <span class="fam-dot"></span><span class="k">FAMILY</span>
+          <span id="family-body" class="slot"></span>
+        </div>
+        <div id="waste-strip" class="waste-strip" data-week="regular" aria-label="Waste collection">
+          <svg class="waste-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.8 9.5h6.4L12 4M6.5 6.5v5M9.5 6.5v5"/></svg>
+          <strong>NEXT COLLECTION</strong>
+          <span id="waste-body" class="slot"></span>
+          <span id="waste-state" class="waste-state"><i></i> REGULAR WEEK</span>
+        </div>
+      </article>
+
+      <section class="calendar" aria-label="Month calendar">
+        <div class="month-heading">
+          <h2 id="month-label">&nbsp;</h2>
+          <div class="month-summary"><strong id="today-num"></strong><span id="today-text">&nbsp;<br>TODAY</span></div>
+        </div>
+        <div id="month-grid" class="month-grid"></div>
+        <div class="month-footer">
+          <span class="footer-accent"></span>
+          <strong>ON THE RADAR</strong>
+          <span id="radar" class="radar"></span>
+          <div id="legend" class="legend"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="right-column">
+      <!-- Layers + #photo-empty are driven by the shared js/photos.js. -->
+      <article class="photo" aria-label="Photo slideshow">
+        <div class="photo-stage">
+          <figure class="photo-layer is-visible" data-layer="a">
+            <div class="photo-backdrop"></div>
+            <img class="photo-image" alt="">
+          </figure>
+          <figure class="photo-layer" data-layer="b">
+            <div class="photo-backdrop"></div>
+            <img class="photo-image" alt="">
+          </figure>
+        </div>
+        <p id="photo-empty" class="photo-empty" hidden>Drop images into the <code>photos/</code> folder</p>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<!-- Weather glyphs, copied from index.html. Drawn locally so the page never
+     loads an NWS image; keys match the server's nws_icons. -->
+<svg class="wx-defs" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="g-cloud">
+      <path d="M18 42h26a9 9 0 0 0 .8-18 14 14 0 0 0-26.4-3A9.5 9.5 0 0 0 18 42Z"/>
+    </g>
+    <symbol id="wx-clear" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="12"/>
+      <g class="wx-rays">
+        <path d="M32 4v9M32 51v9M4 32h9M51 32h9M12 12l6.5 6.5M45.5 45.5 52 52M52 12l-6.5 6.5M18.5 45.5 12 52"/>
+      </g>
+    </symbol>
+    <symbol id="wx-clear-night" viewBox="0 0 64 64">
+      <path d="M44 38A17 17 0 0 1 26 20a17 17 0 0 0 4 33 17 17 0 0 0 16-11 17 17 0 0 1-2 -4Z"/>
+    </symbol>
+    <symbol id="wx-partly" viewBox="0 0 64 64">
+      <circle cx="24" cy="22" r="9"/>
+      <path class="wx-rays" d="M24 4v6M24 34v3M6 22h6M36 22h4M11 9l4 4M37 9l-4 4"/>
+      <use href="#g-cloud" x="6" y="8"/>
+    </symbol>
+    <symbol id="wx-partly-night" viewBox="0 0 64 64">
+      <path d="M34 26a12 12 0 0 1-12-12 12 12 0 1 0 15 15 12 12 0 0 1-3-3Z"/>
+      <use href="#g-cloud" x="6" y="8"/>
+    </symbol>
+    <symbol id="wx-cloudy" viewBox="0 0 64 64">
+      <use href="#g-cloud" x="1" y="6"/>
+    </symbol>
+    <symbol id="wx-rain" viewBox="0 0 64 64">
+      <use href="#g-cloud" x="1" y="-1"/>
+      <path class="wx-drops" d="M21 48l-3 9M33 48l-3 9M45 48l-3 9"/>
+    </symbol>
+    <symbol id="wx-thunder" viewBox="0 0 64 64">
+      <use href="#g-cloud" x="1" y="-3"/>
+      <path class="wx-bolt" d="M34 42l-11 13h8l-3 11 12-14h-8l2-10Z"/>
+    </symbol>
+    <symbol id="wx-snow" viewBox="0 0 64 64">
+      <use href="#g-cloud" x="1" y="-1"/>
+      <path class="wx-drops" d="M20 50v8M16.5 52l7 4M23.5 52l-7 4M40 50v8M36.5 52l7 4M43.5 52l-7 4"/>
+    </symbol>
+    <symbol id="wx-sleet" viewBox="0 0 64 64">
+      <use href="#g-cloud" x="1" y="-1"/>
+      <path class="wx-drops" d="M20 48l-3 9M42 50v8M38.5 52l7 4M45.5 52l-7 4M31 48l-3 9"/>
+    </symbol>
+    <symbol id="wx-fog" viewBox="0 0 64 64">
+      <use href="#g-cloud" x="1" y="-6"/>
+      <path class="wx-drops" d="M12 46h40M18 54h34"/>
+    </symbol>
+    <symbol id="wx-wind" viewBox="0 0 64 64">
+      <path class="wx-drops" d="M6 22h30a7 7 0 1 0-7-7M6 34h40a7 7 0 1 1-7 7M6 46h24"/>
+    </symbol>
+    <symbol id="wx-hot" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="13"/>
+      <g class="wx-rays">
+        <path d="M32 5v8M32 51v8M5 32h8M51 32h8M13 13l5 5M46 46l5 5M51 13l-5 5M18 46l-5 5"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<script type="module" src="/js/v2/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+/* v2 wall: fonts, tokens and the fixed 1920x1080 page frame.
+   Spec: docs/mockups/family_dashboard_v2_mockup.html. Fonts are vendored
+   (latin subset, variable weight) so the page never leaves this server. */
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/oswald-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/dm-sans-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Serif Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/dm-serif-display-latin.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light;
+
+  --bg: #e6fcff;
+  --bg-grad: linear-gradient(130deg, #eaffff, #dcfaff 65%, #dcf7ff);
+  --ink: #11151c;
+  --muted: #6c8290;
+  --label: #7299a9;
+  --rule: #263744;
+  --hair: #a9dce5;
+
+  --gold: #f7cf00;
+  --gold-ink: #0d1518;
+  --holiday-ink: #b3261e;
+  --family: #15bea8;
+  --strip-regular: #164d60;
+  --strip-recycle: #1f9d55;
+  --strip-bulky: #e07a1f;
+
+  --card: rgba(255, 255, 255, .30);
+  --card-edge: rgba(103, 168, 185, .21);
+  --cell: rgba(255, 255, 255, .43);
+  --cell-edge: rgba(92, 163, 180, .12);
+  --cell-out: rgba(255, 255, 255, .10);
+  --today-bg: #fff9de;
+  --today-edge: #e4b900;
+  --today-ink: #a97900;
+
+  /* Weather glyphs, tinted for the light canvas. */
+  --wx-fill: #5aaac6;
+  --wx-drop: #2f7fb5;
+  --wx-bolt: #f2b600;
+
+  --f-display: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+  --f-num: 'Oswald', 'Arial Narrow', 'Liberation Sans Narrow', Arial, sans-serif;
+  --f-body: 'DM Sans', 'Segoe UI', Arial, 'Liberation Sans', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Header band, then the left column (hero + month) beside the photo column. */
+.dashboard {
+  width: 100%;
+  max-width: 1920px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 16px 20px 17px;
+  background: var(--bg-grad);
+  display: grid;
+  grid-template-rows: 162px minmax(0, 1fr);
+  gap: 9px;
+  overflow: hidden;
+}
+
+.lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.43fr) minmax(0, .7fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.left-column {
+  display: grid;
+  grid-template-rows: 262px minmax(0, 1fr);
+  gap: 9px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A JS-filled wrapper whose children lay out as if they were its parent's. */
+.slot { display: contents; }
+
+.sep { opacity: .6; padding: 0 3px; }
+
+/* ---------- weather glyphs (symbols live in v2.html) ---------- */
+
+.wx-defs { position: absolute; width: 0; height: 0; }
+
+.wx-icon {
+  flex: none;
+  fill: var(--wx-fill);
+  stroke: none;
+}
+
+/* Inside <use> shadow trees only ancestor-free selectors match. */
+.wx-rays, .wx-drops {
+  fill: none;
+  stroke: var(--wx-fill);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.wx-drops { stroke: var(--wx-drop); }
+.wx-bolt { fill: var(--wx-bolt); }

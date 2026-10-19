@@ -1,6 +1,6 @@
 """Cached calendar events. Reads SQLite only — never touches the ICS feeds."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Query
@@ -11,11 +11,15 @@ from app.config import (
     EVENT_HORIZON_DAYS,
     HIGHLIGHT_DAYS,
     HIGHLIGHT_KEYWORDS,
+    PERSONS,
+    RADAR_DAYS,
 )
 from app.db import connect, last_success
 from app.envelope import envelope
 from app.event_styles import EVENT_CATEGORIES, categorize
+from app.events_derived import hero, radar, waste
 from app.fetchers.calendars import job_name
+from app.persons import display_color, persons_for
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -38,23 +42,31 @@ def get_events(
     the display draws the whole month and its earlier days would otherwise be
     blank.
     """
-    today = datetime.now(DISPLAY_TZ).date()
+    now = datetime.now(timezone.utc)
+    today = now.astimezone(DISPLAY_TZ).date()
     window_start = grid_start(today)
     window_end = today + timedelta(days=days)
+    # hero/radar/waste read everything cached ahead, whatever ``days`` asks.
+    ahead = max(days, EVENT_HORIZON_DAYS, RADAR_DAYS)
+    read_end = today + timedelta(days=ahead)
 
     jobs = [job_name(feed) for feed in CALENDAR_FEEDS]
     with connect() as conn:
         rows = conn.execute(
             """
             SELECT source, title, start_utc, end_utc, start_date_local,
-                   end_date_local, start_time_local, all_day, location
+                   end_date_local, start_time_local, all_day, location, person
             FROM events
             WHERE end_date_local >= ? AND start_date_local <= ?
             ORDER BY start_date_local, all_day DESC, start_utc, title
             """,
-            (window_start.isoformat(), window_end.isoformat()),
+            (window_start.isoformat(), read_end.isoformat()),
         ).fetchall()
         updated = last_success(conn, jobs) if jobs else None
+
+    feed_colors = {f.key: f.color for f in CALENDAR_FEEDS}
+    every = [_event(row, feed_colors) for row in rows]
+    in_window = [e for e in every if e["start_date"] <= window_end.isoformat()]
 
     return envelope(
         {
@@ -72,7 +84,14 @@ def get_events(
                 for c in EVENT_CATEGORIES
             },
             "highlights": _highlights(rows, today),
-            "events": [_event(row) for row in rows],
+            "events": in_window,
+            "persons": [
+                {"key": p.key, "label": p.label, "color": p.color, "order": p.order}
+                for p in PERSONS
+            ],
+            "hero": hero(every, today, now),
+            "radar": radar(every, today),
+            "waste": waste(every, today),
         },
         last_updated=updated,
     )
@@ -115,8 +134,15 @@ def _highlights(rows: list[Any], today: date) -> list[dict[str, str]]:
     return highlights[:10]
 
 
-def _event(row: Any) -> dict[str, Any]:
+def _event(row: Any, feed_colors: dict[str, str]) -> dict[str, Any]:
     category = categorize(row["title"])
+    persons = persons_for(row)
+    color = display_color(
+        row,
+        persons,
+        feed_colors.get(row["source"], ""),
+        category.color if category else None,
+    )
     return {
         "source": row["source"],
         "title": row["title"],
@@ -128,6 +154,8 @@ def _event(row: Any) -> dict[str, Any]:
         "time_label": _time_label(row["start_time_local"], bool(row["all_day"])),
         "location": row["location"],
         "category": category.key if category else None,
+        "persons": persons,
+        "color": color,
     }
 
 

@@ -149,7 +149,7 @@ def trash_records(
             row["title"]
             for row in event_rows
             if row["start_date_local"] == when.isoformat()
-            and _matches_trash(row["title"])
+            and matches_trash(row["title"])
         ]
         if not titles:
             continue
@@ -160,7 +160,7 @@ def trash_records(
     return records
 
 
-def _matches_trash(title: str | None) -> bool:
+def matches_trash(title: str | None) -> bool:
     low = (title or "").lower()
     return any(kw.lower() in low for kw in TRASH_REMINDER_KEYWORDS)
 

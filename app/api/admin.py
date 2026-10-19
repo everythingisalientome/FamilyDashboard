@@ -46,7 +46,7 @@ def _source_url(job: str, feed_jobs: dict[str, Any]) -> str:
     point = f"{config.WEATHER_LAT},{config.WEATHER_LON}"
     if job in feed_jobs:
         return feed_jobs[job].url
-    if job in ("weather:current", "weather:forecast"):
+    if job in ("weather:current", "weather:forecast", "weather:hourly"):
         return f"https://api.weather.gov/points/{point}"
     if job == "weather:astro":
         return (

@@ -369,21 +369,87 @@ a pre-existing favicon 404).
 
 ---
 
-## Phase 4 — Scrape + LLM pipeline  [ ]
+## Phase 4 — Photo → calendar: Google Calendar feed + JSON importer  [ ]
 
-**Goal:** Dynamic data from sites that offer no feed.
+**Goal:** Family events (doctor visits, daycare closures, trips, parties,
+reminders) get onto the wall and onto everyone's phones with the least typing.
+Anyone in the house photographs the source — a daycare year calendar, an
+appointment email — pastes it into any chat model with the prompt in
+`docs/event-extraction-prompt.md`, and pastes the JSON it returns into an admin
+tab. The server validates it, shows it for review, and writes it to the family
+Google Calendar. **No model API is called by this app** — the LLM step is a
+human-in-the-loop paste, which is also the review step.
+
+**Decided (2026-10-18), supersedes the original "scrape + LLM" spec:**
+- **Source:** the family Google Calendar, not a scraped web page. The original
+  spec's scraper/LLM/schema-validation idea survives as the extraction prompt +
+  server-side schema validation; the "LLM call from the server" part is gone.
+- **Google Calendar is the single source of truth** for family events — not a
+  local `manual` table. Everything the importer writes is visible and editable
+  on every phone; nothing lives only on the wall. Verified 2026-10-18: a
+  **service account** (`family-wall-calendar@…iam.gserviceaccount.com`) with the
+  calendar shared to it as *Make changes to events* can list and insert events
+  from Python with scope `calendar.events` only — no OAuth consent flow, no
+  token expiry (`scripts/test_calendar.py`).
+- **Read the family calendar through the API, not its secret ICS URL.** The ICS
+  endpoint is cached by Google for hours; the API is immediate, so paste →
+  insert → refresh → on the wall at the next poll. School and trash stay ICS.
+- **One calendar, one account.** The household wants everything editable in one
+  place. Person attribution is a tag on the event, not a separate calendar.
+
+**Config (`.env`):**
+- `GCAL_CALENDAR_ID` — the explicit calendar id from *Integrate calendar*
+  (never `primary`: for a service account that is its own empty calendar).
+- `GCAL_SERVICE_ACCOUNT_FILE` — default `data/gcal-sa.json` (git-ignored,
+  outside `static/`). Move the key out of Downloads.
+- `CAL_FAMILY_URL` is retired; the family feed key stays `family` so colours,
+  ordering and `fetch_meta` rows carry over.
 
 **Build:**
-- `fetchers/scraper.py`: per-source config (URL, CSS selector scope, prompt).
-  BeautifulSoup extracts the relevant HTML region; an LLM call converts it to
-  JSON matching a declared schema; response is validated against that schema
-  before it is stored — invalid output keeps the previous good data.
-- Runs once or twice daily per source. API key read from `.env`.
-- First source: TBD (candidate: school lunch menu or community events page).
-- `GET /api/scraped/<source>` endpoint; simple frontend card per source.
+- `fetchers/gcal.py` — one `run()` like every other fetcher: `events.list` with
+  `timeMin` = start of the current month grid, `timeMax` = today + 30 d,
+  `singleEvents=true`, `orderBy=startTime`, `timeZone=America/New_York`; maps
+  each item onto the existing `events` row shape with `source='family'`; carries
+  `extendedProperties.private.person/kind` through as new columns `person`,
+  `kind`; replace-all per source, `record_*` serve-stale like the ICS feeds.
+  Scheduled on the same nightly cron + boot kick as calendars, plus the
+  importer fires it after every write. Gmail-created events
+  (`eventType: fromGmail`) are kept — they are real appointments.
+- Dependencies: `google-api-python-client`, `google-auth` (+ `tzdata` on
+  Windows). Documented in `deployment.md` with the service-account setup steps
+  and `scripts/test_calendar.py` (parametrised from `.env`) as the verification.
+- `app/gcal_writer.py` — `insert(events)` / `delete(id)`. Deterministic ids
+  (`wall<sha1(person|date|title)[:24]>`, base32-safe) so re-pasting the same
+  JSON is a no-op, not duplicates; `extendedProperties.private = {source:
+  'wall', person, kind}`; `summary` built as `<Title>` (the person lives in the
+  tag, and the name-in-title matcher is only the fallback for hand-entered
+  events); `location`/`description` from the JSON; `reminders.useDefault=false`.
+- `app/api/importer.py` — `POST /api/admin/import/validate` (JSON array in →
+  per-row `ok|error` with reasons: schema, date parse, outside ±18 months,
+  duplicate id already on the calendar, `supersedes` match found) and
+  `POST /api/admin/import/commit` (the reviewed rows → writer → fetch → result).
+  Past-dated rows default to unchecked. Invalid rows never reach Google.
+- Admin "Add events" tab, **phone-sized** (the current admin table is desktop
+  only): person picker, paste box, Validate → editable review table (date,
+  time, title, person, kind, include ✓, "replaces <old>" ✓) → Add to calendar
+  → result. Opened from a phone on the home Wi-Fi.
+- `docs/event-extraction-prompt.md` — the prompt (schema, rules, two worked
+  examples from the Kiddie Academy 2026 calendar and a rescheduled well-child
+  email). The importer's validator and the prompt share one contract.
+- Title conventions the extractor produces and the dashboard relies on:
+  `kind=closed` → title keeps the reason ("Daycare closed – Thanksgiving") and
+  `closed` is added to `EVENT_STYLE_HOLIDAY_KEYWORDS`, so a daycare closure is
+  a holiday on the wall; `kind=early_close` → "Closes 12:00 – Family Luncheon"
+  with `early dismissal`/`closes` in the school (dismissal) keywords.
 
-**Done when:** One scraped source displays reliably for a week, including
-surviving at least one source-page change without showing garbage.
+**Done when:** the Kiddie Academy 2026 page and one appointment screenshot go
+photo → prompt → paste → calendar from a phone in under two minutes, the wall
+shows them at the next poll, a second paste of the same JSON adds nothing, and
+a rescheduled appointment replaces its predecessor.
+
+**Known boundary:** the importer is the first thing on `/admin` that writes
+outside the house. It stays LAN-only / no-auth per the one-household model; the
+service-account key grants *events only* on *one* calendar.
 
 ---
 
@@ -743,6 +809,319 @@ glow firing correctly).
   streaks) to **short tiled drops** (elongated radial-gradient dots falling
   exactly one tile per loop, so it's seamless and reads as gentle rain, not
   sliding lines). All still pure transform/opacity on fixed-count layers.
+
+---
+
+## Phase 7 — Light layout v2 (per-person wall)  [x]
+
+**Goal:** A new default page that shows the same data as the current wall in
+the household's new design: light cyan canvas, Oswald clock, DM Serif titles, a
+gold "next up" hero split per child, a family line, a colour-coded waste strip,
+a Sunday-first month grid with a 30-day "on the radar" footer, and the photo
+slideshow in a full-height right column. Static mockup with dummy data (the
+spec for this phase): `docs/mockups/family_dashboard_v2_mockup.html`.
+
+**Routing (done, step 4):** the new page is `/`; the current wall moved to `/v1` (its
+assets stay at `/css`, `/js`; the new page uses `static/v2.html` + `css/v2/` +
+`js/v2/`). `/v2` stays as an alias of `/`. The Pi kiosk URL is unchanged, so
+**the wall flips after the deploy restart** (on its next reload, see Deviations)
+— accepted by the household.
+
+**Reuse, don't rebuild:** `clock.js`, `reload.js`, `dates.js`, `photos.js`
+(slideshow), `/api/settings`, `/api/photos`, `/api/weather`, `/api/events` and
+every fetcher. New renderers only where the DOM differs (`calendar.js` and
+`weather.js` are bound to the v1 ids).
+
+**Decisions (2026-10-18):**
+- **Persons.** A person is a set of feeds plus a name match, declared in `.env`:
+  `PERSON_<KEY>_LABEL/_COLOR/_ORDER`, `PERSON_<KEY>_FEEDS` (feeds wholly
+  theirs — `school` for Prisha now, for both next year) and
+  `PERSON_<KEY>_KEYWORDS` (word-boundary title match, e.g. `prisha`). Events
+  from the Google feed carry a `person` tag (Phase 4) which wins; the keyword
+  match is the fallback for hand-entered events. An event matching nobody from
+  the family feed is *Family*. Served as `persons` + per-event `person` on
+  `/api/events`, computed server-side (Pi stays dumb).
+- **Grid colour** is by feed for school/trash, and by person (else family) for
+  family-calendar events. Legend: Prisha · Prapti · Family · School · Trash.
+  Category tints (holiday/dismissal/quarter) unchanged.
+- **Hero** = two person columns (first two persons by `_ORDER`), each: NEXT UP
+  (earliest upcoming event across their feeds + matches) and, in the former
+  "THEN" slot, **NEXT HOLIDAY** — earliest `holiday`-category event in the same
+  set, larger type ("Wed, Nov 11 · Veterans Day"). Different per child because
+  the daycare and the school close on different days.
+- **Family line** — one row under the kids, above the waste strip: the next
+  family event, then the following one, ellipsised.
+- **Waste strip** — text: the next pickup and its items (from the trash feed,
+  `TRASH_REMINDER_KEYWORDS`). Colour follows the **next un-passed pickup inside
+  the current Sun–Sat week**: contains *recycling* → green, else contains
+  *bulky* → orange, else blue — recycling > bulky when a pickup lists both
+  (they share a day in this feed); once the week's pickups have passed it
+  rolls to next week's first. `WASTE_SPECIAL_RECYCLE/BULKY_KEYWORDS` + colours in `.env`.
+- **On the radar** footer — `HIGHLIGHT_KEYWORDS` minus the trash terms
+  (`first day of school, early dismissal, no school, holiday, end of quarter,
+  capped workday`), window **30 days** (`RADAR_DAYS`), "Nov 26–27 Thanksgiving
+  Break" style with multi-day spans collapsed. The v1 ticker's 7-day
+  `highlights` stays for `/v1`.
+- **Weather** — °F with °C in brackets as today; **six hourly slots** from the
+  next hour (new) and the **next 3 days** from the existing daily rows.
+  `fetchers/weather.py` gains the NWS `/forecast/hourly` call on the same
+  gridpoint inside the `weather:forecast` job, a `weather_hourly` table, and
+  `/api/weather` gains `hourly[]`.
+- **Month grid** Sunday-first, 5 or 6 rows as the month needs (not the mockup's
+  fixed 5), chip-fit measured as in v1.
+- **Dropped on this page** (household: "it was not working anyway"): alerts
+  pill, highlights ticker, stale-dot, ambient background, agenda list. All stay
+  on `/v1`; nothing is deleted.
+- **Fonts vendored**: Oswald, DM Serif Display, DM Sans as `.woff2` under
+  `static/fonts/` — the page must not fetch from Google Fonts (Pi may be
+  offline; page-never-calls-external rule).
+- The mockup's CSS (seven stacked override blocks) is **not** copied; the
+  computed result is reproduced in one clean stylesheet.
+
+**Build order:** (1) hourly fetcher + `/api/weather.hourly`; (2) persons in
+`config.py` + `/api/events` (`persons`, `person`, `radar`, `waste`); (3)
+`static/v2.html` + CSS + renderers, verified at a forced 1920×1080 box against
+live data; (4) route swap `/` ↔ `/v1`; (5) PLAN/README/deployment notes.
+Phase 4's Google feed is not a prerequisite — until it lands the family column
+and Prapti's column simply have less to show.
+
+**Done when:** `/` renders the mockup's layout with live data at 1920×1080 with
+no scroll, both children's columns and the family line fill from real events,
+the waste strip changes colour on a recycling week, and `/v1` still works.
+
+**Step 1 done (2026-10-18) — hourly forecast.** `nws.resolve_grid()` now also
+returns `forecastHourly`; the fetch + parse live in a new helper
+`app/fetchers/weather_hourly.py` (no `run()` of its own — keeps `weather.py`
+under ~200 lines), called from `weather.run()` after the daily forecast and
+current conditions, and recorded as `weather:hourly`. Table `weather_hourly`
+(start_utc PK, UTC ISO) holds current hour + 23, replaced wholesale. `/api/weather` gains `hourly[]`
+(6 slots, `label/temp_f/temp_c/icon/condition/precip_pct`); `weather:hourly`
+is in `staleness.active_jobs` and the admin source map. Verified live: 24 rows,
+6 slots starting at the next local hour; an unroutable hourly URL left
+daily/current fresh and kept the last-good hourly rows, with the error on `weather:hourly` only.
+Deviations:
+- `temp_c` is computed server-side; v1's current block actually converts in
+  the browser (`static/js/weather.js` `toCelsius`), same rounding.
+- `last_updated` on `/api/weather` still tracks current + forecast only
+  (envelope unchanged); hourly staleness shows via `/admin` and the stale-dot.
+- The table keeps the hour in progress as slack; `/api/weather` serves slots
+  strictly after it (the next local hour onward), as the Weather decision says.
+- Hourly is fetched last in the weather job, so an unreachable hourly host
+  (one `FETCH_TIMEOUT_SECONDS`) never delays current conditions.
+
+**Step 2 done (2026-10-18) — persons, hero, radar, waste on `/api/events`.**
+`config.py` discovers `PERSON_<KEY>_LABEL/_COLOR/_ORDER/_FEEDS/_KEYWORDS` into
+`PERSONS` (dataclass `Person`, palette fallback like feeds) and adds
+`PERSON_COLOR_FEEDS`, `FAMILY_FEEDS`, `HERO_HOLIDAY_CATEGORIES`,
+`RADAR_KEYWORDS/_DAYS`, `WASTE_RECYCLE/BULKY_KEYWORDS`; `.env` seeds Prisha
+(feeds=school, order 1) and Prapti (keywords only, order 2). `events` gains
+nullable `person` and `kind` columns; `init_db` adds missing ones via
+`PRAGMA table_info` + `ALTER TABLE` (nothing writes them yet; Phase 4 will).
+Attribution (`persons_for`, `display_color`) is in `app/persons.py`; the hero /
+radar / waste blocks are pure functions in `app/events_derived.py` over the
+API's own event dicts. `/api/events` gains top-level `persons`, `hero`,
+`radar`, `waste`, and per event `persons` + `color`; every v1 key was verified
+identical to the pre-change endpoint (default and `?days=7`) and `/v1`'s page
+renders as before. 26 pytest tests in `tests/` (`python -m pytest`, config in
+`pytest.ini`). Live: Prisha's NEXT UP / NEXT HOLIDAY fill from the school feed;
+Prapti and family are null until Phase 4, as expected.
+Deviations:
+- Per-event attribution is `persons: [keys]` (a list), not the single
+  `person` the Persons decision names — a school event belongs to everyone
+  whose FEEDS lists `school`.
+- **Bulky and recycling do share a day** in the Concord ReCollect feed (every
+  other Wednesday: "Yard Waste · Bulky Waste · Recycling · Garbage"). The
+  household rule is recycling > bulky, so that pickup is "recycle" (green) and
+  "bulky" only shows for a bulky-only pickup.
+- `week_kind` is simply the first pickup from today on: "first un-passed
+  pickup in this Sun–Sat week, else the first after it" is always that one.
+  Same-day pickup events are merged into one entry (items deduped).
+- Radar keywords match as a case-insensitive substring (like the v1
+  highlights); person keywords are word-boundary (`event_styles` regex, now
+  exposed as `compile_keywords`). `alert_rules._matches_trash` is now public
+  `matches_trash`, reused for waste.
+- hero/radar/waste read everything cached ahead
+  (`max(days, EVENT_HORIZON_DAYS, RADAR_DAYS)`) regardless of `?days`; the
+  `events` list is still cut at `days`. NEXT HOLIDAY can only see as far as
+  the cache (30 days) — it is null when no holiday falls in that horizon.
+- `config.py` grew to ~430 lines; split right after (see below).
+
+**Step 2 follow-ups (2026-10-18).** Waste is recycling > bulky; `app/config.py`
+is now the package `app/config/` (`env`, `feeds`, `persons`, `weather`,
+`alerts`, `display`; photo settings went to `display`), with `__init__`
+re-exporting all 55 public names, values verified identical.
+
+**Step 3 done (2026-10-18) — the v2 page at `/v2`.** `static/v2.html` +
+`css/v2/` (`base` tokens/fonts/frame, `header`, `hero`, `month`, `photo`) +
+`js/v2/` (`main`, `util` poll/el helpers, `format`, `date-line`, `weather`,
+`hero`, `month`); `main.py` gains an explicit `GET /v2` before the `/` mount.
+Reuses `clock.js`, `photos.js`, `reload.js`, `dates.js` unchanged (v2.html
+carries their ids/classes); no v1 file touched. Fonts vendored as three
+variable-weight latin woff2 files in `static/fonts/` (Oswald 400–700, DM Sans
+400–800, DM Serif Display 400; ~83 KB total), preloaded, with fallback stacks.
+Each region polls its API on `data_refresh_seconds`, and a failed poll is
+skipped. CLAUDE.md now points at `app/config/`.
+Verified at a forced 1920×1080 viewport on port 8001 against the live cache
+(screenshot `docs/mockups/v2-live-2026-10-18.png`):
+- Box-for-box against the mockup render: 25 of 27 measured regions (header,
+  clock, date, weather blocks, hero, kids, person, title, details, holiday
+  line, family line, waste strip, calendar, heading, today pill, grid,
+  weekday row, cell, chip, footer, photo) match x/y/w/h and font size exactly
+  — header 162 px, hero 262 px (kids 186 / family 36 / waste 40), calendar
+  605 px, grid 5 weeks × 101 px rows, photo 614×876. Differences are content
+  only: `.degrees` starts 14 px further right (46 px SVG glyph vs. the
+  mockup's emoji) and the legend is narrower (no Family entry, see below).
+- `scrollWidth/Height` = 1920/1080; console has only the favicon 404; the
+  resource list contains only `localhost:8001`.
+- Empty states (stubbed hero nulls, empty radar/waste) render "Nothing
+  scheduled", "No holiday in the next 30 days", "Nothing on the family
+  calendar", "No pickups found", "Nothing on the radar". Every region box is
+  unchanged except the radar text span, which just gets shorter.
+- With all `/api/*` aborted after first render and every poll timer fired,
+  the DOM is identical (weather, hero, grid, chips, current photo).
+- Stubbed August 2026: `--weeks` 6 (42 cells), 9 events in one cell →
+  2 chips + "+7", no overflow, still no scroll; `week_kind` recycle → green
+  `#1f9d55` / "RECYCLING WEEK", bulky → orange `#e07a1f` / "BULKY WEEK".
+- `/` still serves the v1 wall (`/js/main.js`, grid/agenda/forecast/ticker
+  render, no console errors). 27 pytest tests pass.
+Deviations:
+- The legend is persons + feeds as specified ("Prisha · Prapti · School ·
+  Trash"). Family has no entry: it isn't a feed and has no colour in the API
+  yet. The family-line dot uses the mockup's `--family` token.
+- Chip colours are the server's `event.color`, so school chips are `#74c0fc`
+  (the feed colour), not the mockup's slate `#5b7fa3`. Oct 9 tints amber
+  because its event is categorised `school` ("End of First Quarter / Early
+  Dismissal") — the dominant-category rule, same as v1.
+- The today cell keeps its gold styling and is never category-tinted (the
+  mockup does not show that case; v1 lets the tint through).
+- The waste strip's "▤" glyph is a small inline SVG bin (the Pi's fonts may
+  not have the glyph). Empty states keep their labels (NEXT HOLIDAY / FAMILY
+  / NEXT COLLECTION) with the wording in the content slot. An empty
+  `week_kind` falls back to "regular".
+- H/L: after ~6 PM NWS drops today's daily row, so H/L falls back to
+  `current.high_f/low_f`. Tonight that is "L 38°" only; missing parts are
+  omitted. UV gets a WHO band ("5 Moderate"), computed in the browser.
+- The clock's meridiem is uppercased in CSS. clock.js writes it lowercase.
+  The date line ("SUNDAY October 18") is a small v2 module because
+  clock.js's date format differs and v1 modules stay untouched.
+- The mockup's phone fallback media query and photo caption are not carried
+  over (wall-only page; no caption per spec).
+
+**Step 3 visual tuning (2026-10-18), CSS only.** Larger type for reading
+across the room. Region boxes are unchanged (header 162, hero 262 = 186/36/40,
+calendar 605, photo 614×876); longer text is absorbed by the existing ellipsis
+and chip fitting. New sizes:
+- Header: the current-conditions row is centred in weather-left (242 px each
+  side tonight); temperature 42px (was 62px), with the temperature and
+  condition block both centred at y=48; FEELS LIKE / HUMIDITY / UV labels
+  13px, values 15px (were 10px); hourly labels 13px, temps 15px (were 11/13).
+  The H/L line already drops a missing H ("L 38°" tonight), so no JS change.
+- Hero: person details 15px, family line 15px (were 13px); holiday "what" 18px
+  (was 16px); waste strip 14px (was 12px), its NEXT COLLECTION label 12px
+  (was 10px), state label 11px (was 9px).
+- Month: chips 12px (was 9px), padding 4px 5px; day numbers 18px (was 16px);
+  weekday headers 12px (was 10px); today tag 9px (was 7px); footer, its
+  ON THE RADAR label and legend 12px (were 10/9/10px). "+N" stays 9px.
+Verified at 1920×1080 on port 8001 (`docs/mockups/v2-live-2026-10-18-tuned.png`):
+scroll 1920/1080; 20 chips, none clipped vertically or past its cell, no
+"+N" needed for tonight's data; no overflow in the metrics row, footer,
+family line or waste strip; console has only the favicon 404.
+Side effect: at 14px the waste strip no longer fits both pickups, so the
+next pickup's items ("Yard Waste · Garba…") ellipsise along with the "Then …"
+part. Pinning the next pickup (`flex: none` on `.waste-type`) would leave
+only "Then …" to shrink; not done here (no layout changes in this pass).
+
+**Step 3 header rework + holiday colour (2026-10-18).** The header is four
+zones in one 162 px row (`grid-template-columns: .62fr .72fr 1.35fr .95fr`,
+gap 28 → 306 / 355 / 666 / 469 px). The bottom rule is the header's own 2 px
+border under all four zones (replaces the per-section `.rule` divs).
+`.weather-layout`, `.weather-left` and `.weather-right` are gone; every
+element id/class the renderers and clock.js write into is unchanged.
+- Clock: time 96px, AM/PM 20px; date on one line "SUNDAY · October 18"
+  (15px/21px). The zone sits at the bottom, just above the rule.
+- Now: vertically centred, left-aligned. Icon 36px + temperature 48px +
+  "(13°C)" 16px on a shared baseline; condition 13px/800 + "H · L" 12px
+  muted; metrics as one line "FEELS LIKE 55° · HUMIDITY 38% · UV 5
+  Moderate" (labels 12px/800 muted, values 14px ink, `::before` dots, no
+  borders). The HTML label "UV INDEX" is now "UV".
+- Next 6 hours: 10px kicker, six slots in `repeat(6, 1fr)` centred in the
+  remaining height (label 13px, icon 22px, temp 15px/800; each slot's
+  content stays centred over its column, as before).
+- Next 3 days: unchanged, left border kept.
+- Holiday line: `.has-holiday` turns label, date and title `--holiday-ink`
+  `#b3261e` (new token); label 85% opacity, 7 px red dot before the date.
+  The "No holiday…" state keeps the muted gold ink and has no dot.
+- Waste strip: `.waste-type` is `flex: none`, so the next pickup stays whole
+  and only "Then …" ellipsises.
+- JS, two one-line changes the spec needs (the CSS can't make them):
+  `hero.js` adds the `has-holiday` class; `weather.js` joins H/L with " · ".
+  A missing H is still dropped ("L 38°").
+Verified at 1920×1080 on port 8001 (`docs/mockups/v2-live-2026-10-18-header.png`):
+scroll 1920/1080; header 162 px, all four zones end at y=176 on the rule.
+No element sticks out of its zone and no text is ellipsised, both live and
+with a stub at the extremes (102° / 39°C, feels 108°, humidity 100%,
+"Partly Cloudy", "5 Moderate", H 104° · L 100°, hourly 101°, daily
+"Partly cloudy" 103°/100°, clock "12:59 PM" / "WEDNESDAY · September 30").
+Console: only the favicon 404.
+
+**Step 4 done (2026-10-18) — route swap.** `main.py` gains explicit `GET /`
+(and `/v2`, same handler) → `static/v2.html` and `GET /v1` →
+`static/index.html`, registered before the `/` StaticFiles mount, which stays
+last with `html=True` so `/css`, `/js`, `/img`, `/fonts`, `/photos` resolve as
+before. No v1 file moved. `requirements.txt` pins the step 2/3 additions to the
+installed versions (`pytest==9.1.1`, `google-api-python-client==2.201.0`,
+`google-auth==2.62.0`, `tzdata==2026.3`).
+
+**Step 5 done (2026-10-18) — docs.** README (features, layout, configuration,
+roadmap), `docs/deployment.md` ("Updating the wall"), this file.
+`.env.example` re-checked: every `PERSON_<KEY>_*`, `PERSON_COLOR_FEEDS`,
+`FAMILY_FEEDS`, `HERO_HOLIDAY_CATEGORIES`, `RADAR_*` and `WASTE_*` key is listed
+with a comment.
+
+**Verified 2026-10-18** on a fresh dev server on port 8001, against the live
+cache. `GET /` and `GET /v2` return 200 and are byte-identical to
+`static/v2.html` (first stylesheet `/css/v2/base.css`), which shows the explicit
+route wins over the mount's `index.html` fallback. `GET /v1` returns
+`static/index.html` byte-for-byte (first stylesheet `/css/style.css`). `/admin`
+is identical to `static/admin.html`. `/api/events`, `/api/weather`,
+`/api/settings`, `/api/photos`, `/api/admin/status`, `/healthz`, `/css/style.css`,
+`/js/main.js`, `/css/v2/base.css`, `/js/v2/main.js` and
+`/fonts/oswald-latin.woff2` all return 200. In Chromium at 1920×1080, `/` loads
+`/js/v2/main.js` with scroll 1920/1080, 20 month chips, Prisha's NEXT UP
+(Thu Oct 22, 6:30 PM) and NEXT HOLIDAY (Tue, Nov 3) from live data, waste
+`regular`, and only `localhost:8001` in the resource list. Its console was
+clean. `/v1` renders the old wall (`/js/main.js`, 5 v1 stylesheets, grid,
+forecast, ticker "Oct 21 Yard Waste") with scroll 1920/1080, and its console
+showed only the long-standing favicon 404. 27 pytest tests pass.
+
+**Deviations from spec** (summary; the per-step notes above have the detail):
+- Hourly: `temp_c` is computed server-side. `/api/weather`'s `last_updated`
+  still covers current + forecast only, and hourly staleness shows via `/admin`.
+  Hourly is fetched last in the weather job, in a helper module.
+- Persons: per-event attribution is a list (`persons: [keys]`), not a single
+  `person`. Every event also carries a server-computed `color`.
+- Waste: recycling and bulky share a pickup day in the Concord feed, and
+  recycling wins. `week_kind` is simply the first pickup from today on. The
+  strip colours are CSS tokens (`--strip-recycle` / `--strip-bulky` in
+  `css/v2/base.css`), not `.env` keys. The keyword keys are
+  `WASTE_RECYCLE_KEYWORDS` / `WASTE_BULKY_KEYWORDS`.
+- Radar keywords match as substrings (like v1 highlights). Person keywords
+  match on word boundaries. hero/radar/waste read the whole cache regardless of
+  `?days`, so NEXT HOLIDAY sees at most 30 days ahead.
+- `app/config.py` became the package `app/config/` (its public names are
+  unchanged).
+- Page: the legend has no Family entry. Chips use the server colour, so school
+  chips are `#74c0fc`. The today cell is never tinted. The bin glyph is an
+  inline SVG. H/L falls back to `current.high_f/low_f` in the evening. The date
+  line is its own small module. There is no phone media query and no photo
+  caption. Type was enlarged and the header reworked into four zones, with a
+  red NEXT HOLIDAY when one is set.
+- Routing: `/v2` is kept as an alias of `/`. The HTML routes send no
+  `Cache-Control`, and v1's `index.html` was last modified on Aug 4, so a
+  Chromium that has cached the old `/` can treat it as fresh for about a week on
+  a plain navigation (seen in testing). A reload revalidates it and shows v2
+  (also verified). The kiosk's nightly 3 AM `location.reload()` does this
+  anyway. For an immediate flip, see `docs/deployment.md`.
 
 ---
 

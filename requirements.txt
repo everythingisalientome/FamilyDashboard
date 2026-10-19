@@ -13,3 +13,11 @@ python-dotenv>=1.0            # reads the secret family-calendar URL from .env
 
 # Dev tooling only (not imported by the running app / service)
 Pillow>=10.0                  # scripts/compress_backgrounds.py: shrink the ambient-background JPEGs
+pytest==9.1.1                 # tests/: python -m pytest
+
+# Phase 4 Google Calendar feed (not imported by the app yet)
+google-api-python-client==2.201.0
+google-auth==2.62.0
+
+# IANA zone data for zoneinfo (Windows has no system tz database)
+tzdata==2026.3

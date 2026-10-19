@@ -64,7 +64,7 @@ def _csv(value: str) -> tuple[str, ...]:
     return tuple(part.strip() for part in value.split(",") if part.strip())
 
 
-def _compile(keywords: tuple[str, ...]) -> re.Pattern:
+def compile_keywords(keywords: tuple[str, ...]) -> re.Pattern:
     # Trailing "s?" so a singular keyword still matches the plural title the
     # calendar actually uses ("workday" -> "Capped Workdays"). The word boundary
     # still keeps "break" out of "Breakfast".
@@ -94,7 +94,7 @@ def _load() -> tuple[EventCategory, ...]:
             order = int(raw_order)
 
         if keywords and color:  # a category needs both to be usable
-            categories.append(EventCategory(key, color, order, _compile(keywords)))
+            categories.append(EventCategory(key, color, order, compile_keywords(keywords)))
 
     categories.sort(key=lambda c: (c.order, c.key))
     return tuple(categories)

@@ -1,8 +1,9 @@
-"""Cache NWS current conditions and the daily forecast.
+"""Cache NWS current conditions, the daily forecast and the hourly forecast.
 
-Current conditions and the forecast are recorded as separate jobs: the nearest
+Current conditions and the forecasts are recorded as separate jobs: the nearest
 station drops out far more often than the gridpoint forecast does, and losing
-one should not blank the other.
+one should not blank the other. The hourly forecast runs inside the forecast
+pass but has its own job name for the same reason.
 """
 
 import logging
@@ -11,13 +12,14 @@ from typing import Any
 
 from app.config import DISPLAY_TZ
 from app.db import connect, record_attempt, record_failure, record_success
-from app.fetchers import nws, openmeteo
+from app.fetchers import nws, openmeteo, weather_hourly
 from app.fetchers.nws_icons import icon_key
 
 log = logging.getLogger("dashboard.weather")
 
 JOB_CURRENT = "weather:current"
 JOB_FORECAST = "weather:forecast"
+JOB_HOURLY = "weather:hourly"
 JOB_ASTRO = "weather:astro"
 
 
@@ -32,13 +34,16 @@ def run() -> None:
     except Exception as exc:
         log.exception("NWS gridpoint lookup failed")
         with connect() as conn:
-            for job in (JOB_CURRENT, JOB_FORECAST):
+            for job in (JOB_CURRENT, JOB_FORECAST, JOB_HOURLY):
                 record_failure(conn, job, f"{type(exc).__name__}: {exc}")
         return
 
+    # Hourly goes last so a dead hourly host (one full timeout) never delays
+    # the current temperature.
     for job, work in (
         (JOB_FORECAST, lambda: _refresh_forecast(grid["forecast"])),
         (JOB_CURRENT, lambda: _refresh_current(grid["stations"])),
+        (JOB_HOURLY, lambda: weather_hourly.refresh(grid["hourly"])),
     ):
         try:
             with connect() as conn:

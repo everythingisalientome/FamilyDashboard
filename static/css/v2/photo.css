@@ -1,0 +1,60 @@
+/* Full-height photo column. The layer/backdrop/image classes are the ones the
+   shared js/photos.js crossfades; same contain + blurred self-fill as v1. */
+
+.right-column { display: grid; min-width: 0; min-height: 0; }
+
+.photo {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #052e54, #05182a 65%, #010309);
+}
+
+.photo-stage { position: absolute; inset: 0; }
+
+.photo-layer {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 2s ease-in-out;
+}
+
+.photo-layer.is-visible { opacity: 1; }
+
+/* Blurred copy of the photo fills the bars around a portrait/landscape mismatch. */
+.photo-backdrop {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(38px) brightness(.55) saturate(1.1);
+}
+
+.photo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.photo-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: #cfeaf3;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: .8;
+}
+
+.photo-empty[hidden] { display: none; }
+.photo-empty code { margin: 0 .35em; font-family: inherit; color: var(--gold); }

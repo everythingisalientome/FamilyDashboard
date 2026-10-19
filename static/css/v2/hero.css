@@ -1,0 +1,170 @@
+/* Gold hero card: two person columns, the family line, the waste strip. */
+
+.hero {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--gold);
+  color: var(--gold-ink);
+  box-shadow: 0 4px 8px #a6a2944d;
+}
+
+.kids { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+
+.person {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 16px 24px 12px;
+  overflow: hidden;
+}
+
+.person + .person { border-left: 1px solid rgba(13, 21, 24, .22); }
+
+.person-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.person-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--pc); }
+.next-label { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 1.1px; opacity: .55; }
+
+.person-title {
+  margin-top: 12px;
+  font-family: var(--f-display);
+  font-size: 42px;
+  line-height: 1.12;
+  letter-spacing: -.9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.person-details {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An empty line keeps its height, so the empty state never reflows. */
+.person-details:empty::before { content: '\00a0'; }
+
+.holiday-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(13, 21, 24, .25);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.holiday-line .k { font-size: 10px; font-weight: 800; letter-spacing: 1.1px; opacity: .6; }
+.holiday-line .when { font-family: var(--f-num); font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+.holiday-line .when:empty::before { content: '\200b'; }
+.holiday-line .what { font-size: 18px; font-weight: 750; overflow: hidden; text-overflow: ellipsis; }
+
+/* A holiday is coming: label, date and title in deep red, the date dotted. */
+.holiday-line.has-holiday { color: var(--holiday-ink); }
+.holiday-line.has-holiday .k { opacity: .85; }
+
+.holiday-line.has-holiday .when::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--holiday-ink);
+}
+
+/* ---------- family line ---------- */
+
+.family-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 24px;
+  border-top: 1px solid rgba(13, 21, 24, .18);
+  background: rgba(255, 255, 255, .55);
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.family-line .fam-dot { flex: none; width: 11px; height: 11px; border-radius: 50%; background: var(--family); }
+.family-line .k { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; }
+.family-line .when { font-weight: 800; }
+.family-line .what { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.family-line .then { margin-left: 6px; font-size: 11px; font-weight: 800; letter-spacing: 1px; opacity: .6; }
+.family-line .none { font-weight: 600; opacity: .6; }
+
+/* ---------- waste strip ---------- */
+
+.waste-strip {
+  --strip: var(--strip-regular);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 40px;
+  padding: 0 17px;
+  background: var(--strip);
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.waste-strip[data-week="recycle"] { --strip: var(--strip-recycle); }
+.waste-strip[data-week="bulky"] { --strip: var(--strip-bulky); }
+
+.waste-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.waste-strip strong { flex: none; font-size: 12px; letter-spacing: .6px; }
+.waste-day { flex: none; font-weight: 800; }
+.waste-type { flex: none; font-weight: 700; }
+.waste-divider { flex: none; height: 14px; border-left: 1px solid rgba(255, 255, 255, .42); }
+.waste-extra { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.waste-state {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .7px;
+  opacity: .85;
+}
+
+.waste-state i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 50%;
+  background: var(--strip);
+}

@@ -39,7 +39,7 @@ Chromium kiosk mode over the LAN.
   `{"data": ..., "last_updated": "<ISO8601>"}`.
 - Type hints on all functions. Keep files short; split before any file
   exceeds ~200 lines.
-- Configuration (feed URLs, intervals, location) lives in `app/config.py`,
+- Configuration (feed URLs, intervals, location) lives in `app/config/` (a package; `from app.config import X`),
   secrets (LLM API key) in `.env` — never hardcoded.
 
 ## Commands

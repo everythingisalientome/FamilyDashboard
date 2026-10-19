@@ -1,0 +1,138 @@
+/* Month card: heading + today pill, Sunday-first grid, radar footer. */
+
+.calendar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px 11px 7px;
+  overflow: hidden;
+  border: 1px solid var(--card-edge);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 7px 25px rgba(39, 117, 130, .055);
+}
+
+.month-heading {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.month-heading h2 {
+  margin: 2px 0 0;
+  font-family: var(--f-display);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -.7px;
+  line-height: 1.15;
+}
+
+.month-heading h2 span { font-family: var(--f-body); font-size: 12px; font-weight: 500; letter-spacing: 0; color: #7da2b2; }
+
+.month-summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 9px;
+  border: 1px solid #b4e4e9;
+  border-radius: 13px;
+  background: #d4f6f7;
+  color: #132d3b;
+}
+
+.month-summary strong { font-family: var(--f-num); font-size: 25px; font-weight: 500; line-height: 1; }
+.month-summary span { font-size: 8px; font-weight: 800; letter-spacing: 1px; line-height: 1.55; }
+
+/* --weeks (5 or 6) is set by month.js. */
+.month-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: 18px repeat(var(--weeks, 5), minmax(0, 1fr));
+  gap: 3px;
+}
+
+.weekday { padding: 2px 0 4px; text-align: center; font-size: 12px; font-weight: 800; letter-spacing: 1.1px; color: #6695a7; }
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 5px;
+  overflow: hidden;
+  border: 1px solid var(--cell-edge);
+  border-radius: 9px;
+  background: var(--cell);
+}
+
+.cell.tint { background: color-mix(in srgb, var(--tint) 18%, var(--cell)); }
+.cell.outside { border-color: transparent; background: var(--cell-out); }
+.cell.outside .num { color: #8fb0bd; }
+
+.cell.today {
+  padding: 4px;
+  border: 2px solid var(--today-edge);
+  background: var(--today-bg);
+  box-shadow: 0 0 0 2px rgba(255, 210, 0, .11);
+}
+
+.day-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 3px; }
+.num { font-family: var(--f-num); font-size: 18px; line-height: 1; color: #132331; }
+.today .num { color: var(--today-ink); }
+.today-tag { margin-left: auto; font-size: 9px; font-weight: 800; letter-spacing: .5px; color: #856800; }
+.more { font-size: 9px; font-weight: 800; color: #52798b; }
+
+.events { display: flex; flex: 1 1 0; flex-direction: column; gap: 3px; min-height: 0; overflow: hidden; }
+
+/* --c is the server-decided event.color. */
+.chip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--c) 14%, #fff0);
+  color: #1a3540;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.chip i { flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--c); }
+.chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip b { margin-right: 2px; font-weight: 800; color: #3f667d; }
+.chip.cat { background: var(--c); color: #fff; }
+.chip.cat b { color: #fff; }
+
+/* ---------- footer ---------- */
+
+.month-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 21px;
+  margin-top: 5px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: #52798b;
+}
+
+.footer-accent { flex: none; width: 16px; height: 3px; border-radius: 6px; background: #e1ae00; }
+.month-footer strong { flex: none; font-size: 12px; letter-spacing: .8px; color: #284b59; }
+.radar { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.radar b { color: #132331; }
+
+.legend { display: flex; flex: none; gap: 11px; margin-left: auto; font-size: 12px; font-weight: 700; color: #426879; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }

@@ -57,7 +57,10 @@ def active_jobs(feed_jobs: dict[str, Any] | None = None) -> set[str]:
     """Jobs that a currently-configured source is expected to produce."""
     if feed_jobs is None:
         feed_jobs = feeds_by_job()
-    active = {"weather:current", "weather:forecast", "weather:astro", "alerts:weather"}
+    active = {
+        "weather:current", "weather:forecast", "weather:hourly", "weather:astro",
+        "alerts:weather",
+    }
     if config.PHOTOS_ALBUM_URL:
         active.add("photos")
     active.update(feed_jobs)

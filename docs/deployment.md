@@ -48,7 +48,7 @@ When it finishes it prints the dashboard and admin URLs and the log location.
 
 ### What it configures (and why)
 
-- **`AppDirectory` = repo root.** `config.py` calls `load_dotenv()` with no path,
+- **`AppDirectory` = repo root.** `app/config/env.py` calls `load_dotenv()` with no path,
   so it reads `.env` relative to the working directory. If the service ran from
   anywhere else it would boot on built-in defaults and **silently ignore your
   `.env`** — no feeds, wrong location. This is the single most important setting.
@@ -112,6 +112,32 @@ nssm edit FamilyDashboard
   you once feed-editing lands.)
 - **Change the port**: re-run `.\scripts\install-service.ps1 -Port <n>` (it
   updates both the service and the firewall rule).
+
+### Updating the wall
+
+After `git pull` on the server, from the repo root:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+nssm restart FamilyDashboard
+```
+
+Run the `pip install` even when you don't think dependencies changed. Phase 7
+pinned `tzdata`, which `zoneinfo` needs on Windows. It also added
+`google-api-python-client`, `google-auth` (for Phase 4) and `pytest`. The app
+doesn't import those three yet, so installing them is harmless.
+
+The Pi's kiosk URL doesn't change. `http://<server-ip>:8000/` is now the light
+per-person wall (Phase 7). The previous dark wall is still at
+**`http://<server-ip>:8000/v1`** if the household wants it back for a day: point
+the kiosk at it, or just open it on any screen.
+
+The server doesn't send `Cache-Control` on the HTML pages, so a Chromium that
+already has the old `/` cached may keep showing it on a plain launch for up to
+about a week. A reload revalidates the page, so the wall switches at the
+nightly 3 AM self-reload. To flip it right
+away, press F5 on a keyboard plugged into the Pi. A reboot alone may not be
+enough.
 
 ## 5. Uninstall
 

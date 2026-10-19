@@ -4,10 +4,12 @@ A self-hosted family wall display. A Python backend on an always-on machine
 (a Windows server here) fetches, caches, and serves everything; a Raspberry Pi
 displays the dashboard full-screen in Chromium kiosk mode over the LAN.
 
-The wall shows a photo slideshow with the time and date, a month calendar with
-colour-coded events, an upcoming-events agenda, a keyword "upcoming" ticker, and
-current conditions plus a multi-day forecast — all on a dark, always-on layout
-tuned for 1920×1080 viewed from across a room.
+The wall is a light, per-person layout tuned for 1920×1080 and read from across
+the room. It has a large clock, current conditions with the next six hours and
+the next three days, a "next up" card for each child, the family's next events,
+a colour-coded waste-pickup strip, a Sunday-first month calendar with a 30-day
+"on the radar" footer, and a photo slideshow. The previous dark wall is still
+served at `/v1`.
 
 ## Why
 
@@ -30,6 +32,26 @@ simplest thing that runs on the LAN and is easy to change.
 
 ## Features
 
+- **The wall (`/`)**: a light layout with a cyan canvas, an Oswald clock and
+  DM Serif titles. The fonts are vendored, so the page never fetches from
+  Google Fonts.
+  - **Per-child "next up"**: one column per person (the first two by
+    `PERSON_<KEY>_ORDER`). Each shows that child's next event and their **next
+    holiday**, which differs per child because the school and the daycare close
+    on different days. A person's events are the feeds that are wholly theirs
+    plus title keyword matches.
+  - **Family line**: the next one or two family-calendar events that match
+    nobody.
+  - **Waste strip**: the next pickup and its items. It turns green on a
+    recycling week, orange on a bulky week, and is blue otherwise.
+  - **Weather**: current conditions (°F with °C), H/L, feels-like, humidity
+    and UV, plus six hourly slots from the next hour and a 3-day outlook.
+  - **Month grid**: Sunday-first, 5 or 6 weeks as the month needs, with
+    chips coloured by person or feed and an "on the radar" footer of keyword
+    events in the next 30 days (multi-day spans collapsed).
+- **The previous wall (`/v1`)**: the dark layout with the agenda, upcoming
+  ticker, alerts pill, stale-dot and ambient background is unchanged. Open
+  `/v1` to get it back.
 - **Calendars** — any number of ICS feeds (Google Calendar, school district,
   ReCollect trash pickup, …), discovered from `.env`, expanded 30 days ahead
   (recurring events included), merged with per-source colours.
@@ -41,14 +63,14 @@ simplest thing that runs on the LAN and is easy to change.
   Open-Meteo and a locally-computed moon phase; a multi-day outlook strip.
 - **Photos** — a slideshow from the local `photos/` folder, optionally synced
   from a public Google Photos shared album (no Google login required).
-- **Ambient background** — a living illustrated scene (sky, sun/moon/stars,
+- **Ambient background** (`/v1`): a living illustrated scene (sky, sun/moon/stars,
   mountain, house, trees) behind the whole dashboard that tracks the **time of
   day** (anchored to real sunrise/sunset), the **current weather** (rain, snow,
   wind, thunderstorm/lightning, clouds, fog) and the **season**. Drawn locally as
   layered SVG + CSS, with optional pre-rendered art per season×phase; the panels
   are frosted glass so it shows through without hurting legibility.
-- **Upcoming ticker** — a one-line strip of the next week's keyword highlights.
-- **Alerts** — a shiny pill along the bottom of the photo panel rotates through
+- **Upcoming ticker** (`/v1`): a one-line strip of the next week's keyword highlights.
+- **Alerts** (`/v1`): a shiny pill along the bottom of the photo panel rotates through
   active NWS weather alerts, school closures, trash reminders and per-calendar
   alerts, without ever pushing the layout.
 - **Admin page** — `/admin` (LAN-only, no login) lists every feed with its
@@ -106,7 +128,11 @@ commented list). Highlights:
 | `PHOTOS_ALBUM_URL` | Public Google Photos shared album to sync (blank = manual `photos/` only). |
 | `PHOTO_INTERVAL_SECONDS` | Seconds each photo shows in the slideshow. |
 | `EVENT_STYLE_<KEY>_KEYWORDS` / `_COLOR` / `_ORDER` | Extend/retune the colour categories. |
-| `HIGHLIGHT_KEYWORDS`, `HIGHLIGHT_DAYS` | Which upcoming events feed the ticker, and how far ahead. |
+| `HIGHLIGHT_KEYWORDS`, `HIGHLIGHT_DAYS` | Which upcoming events feed the `/v1` ticker, and how far ahead. |
+| `PERSON_<KEY>_LABEL` / `_COLOR` / `_ORDER` / `_FEEDS` / `_KEYWORDS` | Define a household member for the wall's "next up" columns: feeds that are wholly theirs, plus title keywords. The first two by `_ORDER` get a column. |
+| `PERSON_COLOR_FEEDS`, `FAMILY_FEEDS`, `HERO_HOLIDAY_CATEGORIES` | Which feeds take a person's colour, which feed the family line, and which colour categories count as a "holiday". |
+| `RADAR_KEYWORDS`, `RADAR_DAYS` | Which events appear in the month's "on the radar" footer, and how far ahead (default 30 days). |
+| `WASTE_RECYCLE_KEYWORDS`, `WASTE_BULKY_KEYWORDS` | Pickup-title words that make the waste strip a recycling week (green) or a bulky week (orange). |
 | `LOG_DIR`, `LOG_LEVEL`, `LOG_RETENTION_DAYS` | Where the rotating app log is written, its level, and how many past days to keep. |
 
 `.env` is git-ignored — it holds capability URLs (calendar/photo share links)
@@ -117,19 +143,27 @@ errors are visible at **`/admin`**; changes still take effect on restart.
 
 ```
 app/
-  main.py            FastAPI entrypoint (serves /api, /admin, /photos, /)
-  config.py          all settings, read from .env with sensible defaults
+  main.py            FastAPI entrypoint (serves /api, /admin, /photos, /, /v1)
+  config/            settings package, read from .env (feeds, persons, weather,
+                     alerts, display); `from app.config import X`
+  persons.py         which person(s) an event belongs to, and its chip colour
+  events_derived.py  hero / radar / waste blocks for /api/events
   scheduler.py       APScheduler wiring for the fetch jobs
   db.py              SQLite schema + cache helpers
   logging_setup.py   root logging + the daily-rotating app log
   event_styles.py    keyword → colour category engine
   api/               /api/* endpoints (events, weather, photos, settings, admin)
   fetchers/          one module per data source (calendars, weather, photos, ...)
-static/              the dashboard + the /admin page (HTML/CSS/JS, no build)
+static/              the pages (HTML/CSS/JS, no build)
+  v2.html            the wall at /  (css/v2/, js/v2/)
+  index.html         the previous wall at /v1  (css/, js/)
+  admin.html         /admin
+  fonts/             vendored Oswald, DM Sans, DM Serif Display (woff2)
+tests/               pytest (python -m pytest)
 photos/              slideshow images (git-ignored; drop files or sync an album)
 data/                SQLite cache + logs/ (git-ignored, created on first run)
 scripts/             NSSM install/uninstall + background-image compressor
-docs/                deployment guide
+docs/                deployment guide, v2 mockup + reference screenshots
 PLAN.md              phased roadmap and per-phase build notes
 ```
 
@@ -150,12 +184,13 @@ checklist is tracked in **[PLAN.md](PLAN.md)** (Phase 5).
 ## Roadmap
 
 Built in phases — see **[PLAN.md](PLAN.md)** for the full plan and the build
-notes for each phase. Phases 1–3 (the dashboard, calendars, weather, photos,
-alerts) and Phase 6 (the animated ambient background) are done, and Phase 5
-deployment polish is largely complete (Windows service, Pi kiosk, admin page
-with feed health + logs, and the dashboard stale-dot). Remaining: the Phase 4
-scrape/LLM pipeline, and the last Phase 5 item — feed add/remove and a
-"Save & restart" from the admin page.
+notes for each phase. Done: Phases 1–3 (the dashboard, calendars, weather,
+photos and alerts), Phase 6 (the animated ambient background) and Phase 7 (the
+light per-person layout, now the default wall). Phase 5 deployment polish is
+largely complete (Windows service, Pi kiosk, admin page with feed health and
+logs, and the stale-dot). Remaining: Phase 4 (photo → calendar: the Google
+Calendar feed and JSON importer), and the last Phase 5 item, which is feed
+add/remove and a "Save & restart" button on the admin page.
 
 ---
 

@@ -24,7 +24,9 @@ CREATE TABLE IF NOT EXISTS events (
     start_time_local  TEXT,
     all_day           INTEGER NOT NULL DEFAULT 0,
     location          TEXT,
-    description       TEXT
+    description       TEXT,
+    person            TEXT,                -- PERSON_<KEY> tag (Phase 4), else NULL
+    kind              TEXT                 -- event kind tag (Phase 4), else NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_dates ON events (start_date_local, end_date_local);
 CREATE INDEX IF NOT EXISTS idx_events_source ON events (source);
@@ -50,6 +52,16 @@ CREATE TABLE IF NOT EXISTS weather_daily (
     precip_pct  INTEGER,
     condition   TEXT,
     icon        TEXT
+);
+
+-- NWS hourly forecast, current hour through the next ~24. Replaced wholesale
+-- on each successful fetch; /api/weather picks the next six at read time.
+CREATE TABLE IF NOT EXISTS weather_hourly (
+    start_utc   TEXT PRIMARY KEY,      -- ISO8601 UTC, top of the hour
+    temp_f      INTEGER,
+    condition   TEXT,
+    icon        TEXT,
+    precip_pct  INTEGER
 );
 
 -- Today's UV index and sun times, from Open-Meteo (NWS serves neither).
@@ -100,10 +112,22 @@ def connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+#: Columns added to ``events`` after it first shipped. CREATE TABLE IF NOT
+#: EXISTS never alters an existing table, so init_db adds any that are missing.
+_EVENT_COLUMNS_ADDED: tuple[tuple[str, str], ...] = (
+    ("person", "TEXT"),
+    ("kind", "TEXT"),
+)
+
+
 def init_db() -> None:
-    """Create the schema. Safe to call on every startup."""
+    """Create the schema and migrate older DBs. Safe to call on every startup."""
     with connect() as conn:
         conn.executescript(SCHEMA)
+        have = {row["name"] for row in conn.execute("PRAGMA table_info(events)")}
+        for name, sql_type in _EVENT_COLUMNS_ADDED:
+            if name not in have:
+                conn.execute(f"ALTER TABLE events ADD COLUMN {name} {sql_type}")
 
 
 def record_attempt(conn: sqlite3.Connection, job: str) -> None:

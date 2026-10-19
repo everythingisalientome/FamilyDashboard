@@ -1,6 +1,6 @@
 """Cached weather. Reads SQLite only — never touches api.weather.gov."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter
@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from app.config import DISPLAY_TZ, FORECAST_DAYS
 from app.db import connect, last_success
 from app.fetchers.weather import JOB_CURRENT, JOB_FORECAST
+from app.fetchers.weather_hourly import hour_floor_utc
 from app.envelope import envelope
 
 router = APIRouter()
@@ -19,6 +20,7 @@ _MOON_NAMES = (
 _MOON_ICONS = ("🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘")
 _SYNODIC_MONTH = 29.530588853
 _KNOWN_NEW_MOON = date(2000, 1, 6)
+HOURLY_SLOTS = 6
 
 
 @router.get("/weather")
@@ -42,6 +44,17 @@ def get_weather() -> dict[str, Any]:
         astro = conn.execute(
             "SELECT sunrise, sunset, uv_index FROM weather_astro WHERE id = 1"
         ).fetchone()
+        hourly = conn.execute(
+            """
+            SELECT start_utc, temp_f, condition, icon, precip_pct
+            FROM weather_hourly
+            WHERE start_utc > ?
+            ORDER BY start_utc
+            LIMIT ?
+            """,
+            # Strictly after the hour in progress: slots start at the next hour.
+            (hour_floor_utc(datetime.now(timezone.utc)), HOURLY_SLOTS),
+        ).fetchall()
         updated = last_success(conn, [JOB_CURRENT, JOB_FORECAST])
 
     days = [_day(row, today) for row in daily]
@@ -61,6 +74,7 @@ def get_weather() -> dict[str, Any]:
         {
             "current": current_out,
             "daily": forecast,
+            "hourly": [_hour(row) for row in hourly],
         },
         last_updated=updated,
     )
@@ -139,6 +153,21 @@ def _day(row: Any, today: date) -> dict[str, Any]:
         "precip_pct": row["precip_pct"],
         "condition": _short_condition(row["condition"]),
         "icon": row["icon"] or "clear",
+    }
+
+
+def _hour(row: Any) -> dict[str, Any]:
+    """One hourly slot, labelled in local time ("4 PM")."""
+    local = datetime.fromisoformat(row["start_utc"]).astimezone(DISPLAY_TZ)
+    meridiem = "AM" if local.hour < 12 else "PM"
+    temp_f = row["temp_f"]
+    return {
+        "label": f"{local.hour % 12 or 12} {meridiem}",
+        "temp_f": temp_f,
+        "temp_c": None if temp_f is None else round((temp_f - 32) * 5 / 9),
+        "icon": row["icon"] or "clear",
+        "condition": row["condition"],
+        "precip_pct": row["precip_pct"],
     }
 
 
