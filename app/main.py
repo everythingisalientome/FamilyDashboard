@@ -1,13 +1,16 @@
 """FastAPI entrypoint: /api/* for data, /photos for images, / for the display."""
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.staticfiles import PathLike
+from starlette.types import Scope
 
 from app import scheduler
 from app.api import router as api_router
@@ -87,8 +90,20 @@ def _html_page(name: str) -> FileResponse:
     return FileResponse(STATIC_DIR / name, headers={"Cache-Control": "no-cache"})
 
 
+class RevalidatingStaticFiles(StaticFiles):
+    """Every asset is revalidated (a 304 when unchanged), so a deploy is live
+    on the next page load. No ?v= cache-busting needed; LAN cost is a header."""
+
+    def file_response(
+        self, full_path: PathLike, stat_result: os.stat_result, scope: Scope, status_code: int = 200
+    ) -> Response:
+        response = super().file_response(full_path, stat_result, scope, status_code)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 # Order matters: /api and /photos must be registered before the catch-all
 # static mount at "/", or the mount would swallow them.
 app.include_router(api_router, prefix="/api")
 app.mount("/photos", StaticFiles(directory=PHOTOS_DIR), name="photos")
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+app.mount("/", RevalidatingStaticFiles(directory=STATIC_DIR, html=True), name="static")

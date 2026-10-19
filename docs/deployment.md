@@ -198,13 +198,14 @@ per-person wall (Phase 7). The previous dark wall is still at
 **`http://<server-ip>:8000/v1`** if the household wants it back for a day: point
 the kiosk at it, or just open it on any screen.
 
-The HTML pages are served with `Cache-Control: no-cache`, so Chromium
-revalidates them on every launch and a deploy shows up on the next load. The
-exception is the **first** switch to v2. The Pi's copy of the old `/` was
-cached before that header existed, so on a plain launch it can be treated as
-fresh for up to about a week. A reload revalidates it, so the wall switches at
-the nightly 3 AM self-reload. To flip it right away, press F5 on a keyboard
-plugged into the Pi. A reboot alone may not be enough.
+Everything under `static/` — the HTML pages and every `/css`, `/js`, `/fonts`
+and `/img` asset — is served with `Cache-Control: no-cache`. The browser
+revalidates each file on every load and gets a `304 Not Modified` when it is
+unchanged, so on the LAN the cost is a header exchange. A deploy is therefore
+live on the next page load (on the wall: the next kiosk launch or the nightly
+3 AM self-reload). New HTML can't be paired with stale cached scripts, and no
+`?v=` cache-busting is needed. (`/photos` keeps default caching; photo URLs
+carry their own `?v=<size>`.)
 
 ### Google Calendar (service account)
 

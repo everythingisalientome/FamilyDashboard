@@ -820,15 +820,28 @@ verified 2026-10-19 on 8001 at 1280 px and 390 px.
   exit 0, relaunch, page reloaded, banner gone. Dev `.env` restored afterwards.
 
 **Deviations** (Pass 7):
-- **Admin assets carry `?v=N`.** The page is served `no-cache`, but `/js` and
-  `/css` are not, and during verification the browser paired the new HTML with a
-  heuristically cached old `admin.js`. Bump `?v=` in `admin.html` whenever an
-  admin JS/CSS file changes. (A server-side no-cache for assets would also fix
-  it, but the brief limited backend changes.)
+- **Admin assets carried `?v=N`** because the browser paired the new HTML
+  with a heuristically cached old `admin.js` during verification. *Superseded
+  by the follow-up below: assets are now served no-cache, and `?v=` is gone.*
 - The orphan-job "✕ clear" confirm on the Status tab also moved to the in-page
   modal, for the same kiosk-reliability reason.
 - On a run of keys sharing one `.env.example` comment block, the help text is
   shown once (on the first key), not repeated on every row.
+
+**Follow-up (2026-10-19) — no-cache on every static asset.** The `/` static
+mount is now `RevalidatingStaticFiles` (`app/main.py`), a `StaticFiles`
+subclass whose `file_response()` adds `Cache-Control: no-cache`. Every
+`/css`, `/js`, `/fonts` and `/img` response is revalidated, with a 304 when
+unchanged (Starlette's ETag/Last-Modified handling is untouched), so a deploy
+is live on the next page load. The manual `?v=` strings and their comment were
+removed from `admin.html`. The deployment.md caveat about the wall showing old
+assets until a hard reload is gone. Verified with `curl -I`: `/js/v2/night.js`,
+`/css/admin.css` and `/fonts/oswald-latin.woff2` each return 200 +
+`cache-control: no-cache`, then 304 for `If-Modified-Since: <last-modified>`.
+`/photos` keeps default caching (photo URLs carry their own `?v=<size>`). The
+explicit page routes (`/`, `/admin`, …) were already no-cache. They return a
+full 200 on revalidation (plain `FileResponse` has no conditional handling),
+which is harmless for a few KB of HTML.
 
 **Already in place** (reuse, don't rebuild):
 - Adding/removing a feed already works without code: set `CAL_<KEY>_URL` in
