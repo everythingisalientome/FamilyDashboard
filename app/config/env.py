@@ -9,7 +9,18 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+#: The repo root (this file is app/config/env.py).
+BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
+
+#: The .env file the settings come from. APP_DOTENV_PATH overrides it (relative
+#: to the repo root) — the admin page's dry-run boots a candidate file this way.
+_DOTENV_RAW = os.getenv("APP_DOTENV_PATH", "").strip()
+DOTENV_PATH: Path = BASE_DIR / (_DOTENV_RAW or ".env")
+load_dotenv(DOTENV_PATH)
+
+#: Set only by the admin dry-run: an unparseable number raises instead of
+#: falling back, so a typo is refused before it is saved (boot stays lenient).
+STRICT: bool = os.getenv("APP_CONFIG_STRICT", "") == "1"
 
 # --- Env helpers -----------------------------------------------------------
 # Every tunable is read from the environment with the old hardcoded value as
@@ -27,6 +38,8 @@ def _env_int(name: str, default: int) -> int:
     try:
         return int(raw) if raw else default
     except ValueError:
+        if STRICT:
+            raise ValueError(f"{name}={raw!r} is not a whole number") from None
         return default
 
 
@@ -35,6 +48,8 @@ def _env_float(name: str, default: float) -> float:
     try:
         return float(raw) if raw else default
     except ValueError:
+        if STRICT:
+            raise ValueError(f"{name}={raw!r} is not a number") from None
         return default
 
 
@@ -43,9 +58,6 @@ def _env_csv(name: str, default: str) -> tuple[str, ...]:
 
 
 # --- Paths -----------------------------------------------------------------
-
-#: The repo root (this file is app/config/env.py).
-BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR: Path = BASE_DIR / "static"
 PHOTOS_DIR: Path = BASE_DIR / "photos"
 DATA_DIR: Path = BASE_DIR / "data"

@@ -1,6 +1,7 @@
 """FastAPI entrypoint: /api/* for data, /photos for images, / for the display."""
 
 import logging
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -47,9 +48,14 @@ app = FastAPI(
 )
 
 
+#: Changes on every process start, so the admin page's "Save & restart" can
+#: tell the relaunched server apart from the old one still answering.
+_BOOT_ID = str(time.time_ns())
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "boot": _BOOT_ID}
 
 
 # The static mount serves everything else, but "/admin" (no extension) needs an

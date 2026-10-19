@@ -588,22 +588,22 @@ Deviations:
 
 ---
 
-## Phase 5 — Manageability & deployment polish  [~]
+## Phase 5 — Manageability & deployment polish  [x]
 
 **Goal:** The reason we moved off the old service: easy to manage long-term.
 
-**Remaining in this phase** (deployment is live; these are the open items):
+**Phase items** (all done):
 - [x] **Dashboard stale-dot** — done (Pass 5). The staleness math moved from
   `admin.py` into `app/staleness.py` (shared) and a subtle amber corner dot on
   the wall lights when any *active* feed is stale.
-- [ ] **Feed editing + "Save & restart" from `/admin`** — write feeds/tunables
-  back to `.env` and apply via a service restart (just `nssm restart
-  FamilyDashboard`, already documented). Editable settings write to `.env`, never
-  a second store (see the Pass 1 env-vs-DB decision below). Only piece of the
-  admin page that mutates config; everything read-only shipped in Pass 1.
+- [x] **Feed editing + "Save & restart" from `/admin`** — done (Pass 6). Writes
+  feeds/tunables back to `.env` and applies them with a service restart.
+  Editable settings write to `.env`, never a second store (see the Pass 1
+  env-vs-DB decision below).
 
-Done in this phase so far: Pass 1 (admin status + manual refresh), Pass 2 (NSSM
-service), Pass 3 (admin logs + source URLs + orphan cleanup), Pass 4 (Pi kiosk).
+Done in this phase: Pass 1 (admin status + manual refresh), Pass 2 (NSSM
+service), Pass 3 (admin logs + source URLs + orphan cleanup), Pass 4 (Pi kiosk),
+Pass 5 (stale-dot), Pass 6 (admin `.env` editor + Save & restart).
 
 **Pass 1 done (read-only status + manual refresh)** — verified 2026-08-03 in a
 live server + browser. Decided up front: the admin page edits `.env` and applies
@@ -703,9 +703,86 @@ admin now imports it, so the board and the dot can't disagree on "stale."
   showed and its tooltip listed exactly the stale jobs, while the two calendar
   feeds (inside their 26 h window) were correctly not flagged.
 
-**Still to build:** feed add/remove + `.env` write + the "Save & restart" button
-(the only remaining Phase 5 item). (Deployment — Windows service + Pi kiosk — and
-the stale-dot are done.)
+**Pass 6 done (admin `.env` editor + Save & restart)** — verified 2026-10-19.
+- `app/env_file.py` (pure): `parse` keeps every line (comments, blanks, order,
+  CRLF) so `render(parse(t)) == t` byte for byte; `apply` updates keys in place,
+  drops `None` keys and appends new ones under `# Added via /admin <date>`;
+  `quote` adds single quotes only for leading/trailing spaces or `#`; `schema`
+  reads `.env.example` into sections (heading between `# ----` rules) with each
+  key's default and comment block; `diff` gives missing/unknown/changed keys.
+- `app/env_admin.py` + `app/api/admin_env.py`: `GET /api/admin/env` (sections,
+  drift, env path, `can_restart`), `POST /api/admin/env/validate` (dry-run, no
+  write), `POST /api/admin/env/save` (re-validate → backup to
+  `data/env-backups/.env.<UTC stamp>`, last 10 kept → temp file + `os.replace`
+  → optional `os._exit(0)` 1 s later on a thread). Saves are logged with the
+  changed keys, `*_URL`/`GCAL_*` values redacted.
+- `can_restart` = `FAMILY_WALL_SERVICE=1`, set by `install-service.ps1` via
+  `nssm set … AppEnvironmentExtra FAMILY_WALL_SERVICE=1` (re-run the installer
+  once to get it).
+- Admin page: a "Settings (.env)" section with a drift banner ("Add with
+  defaults"), collapsible sections (open when they hold staged changes or
+  drift), typed inputs (colour picker + text for `*_COLOR`, number for
+  `*_SECONDS/_DAYS/_HOUR/_MINUTE/_MAX`), help text + "default: …", feed/person
+  groups with Remove, "Add calendar feed" / "Add person" helpers, and a fixed
+  staged-changes bar (Review / Save / Save & restart / Discard).
+- Tests: `tests/test_env_file.py` (round-trip with CRLF, apply, quoting, diff,
+  schema) and `tests/test_admin_env.py` (a real dry-run refuses `WEATHER_LAT=abc`
+  and a bad colour with nothing written; save writes a backup + the new file;
+  backup pruning; key/one-line checks; log redaction).
+- **Verified** on a dev server on 8001: `/admin` showed the drift banner (9
+  `.env.example` keys missing from the dev `.env`, plus `CAL_FAMILY_URL` unknown);
+  changing `PHOTO_INTERVAL_SECONDS` 10 → 12, Review showed `10 → 12` and a
+  passing dry-run; Save changed exactly that one line of `.env`, wrote a
+  byte-identical backup, logged the save, and showed the "restart the dev server
+  by hand" note (Save & restart disabled with a tooltip). `WEATHER_LAT=abc` was
+  then refused (the traceback ending `WEATHER_LAT='abc' is not a number` shown,
+  `.env` untouched, no backup). The add-feed / add-person helpers, Remove on the
+  trash feed and "Add with defaults" staged the expected keys and dry-ran clean
+  (not saved). With NSSM simulated (a relaunch loop on 8002 with
+  `FAMILY_WALL_SERVICE=1`), Save & restart showed the overlay, the process
+  exited 0 a second after the save, relaunched, and the page reloaded itself on
+  the new boot id. That save also put the value back, so the dev `.env` ended
+  byte-identical to how it started. No horizontal scroll at 390 px wide; the
+  Add-events phone layout is unchanged. **Not verified:** the real NSSM
+  relaunch on the server (no NSSM on the dev box). The `AppEnvironmentExtra`
+  line follows NSSM's documented syntax but hasn't been run yet.
+
+**Deviations from spec** (Pass 6):
+- **Strict mode for the dry-run.** A plain `import app.config` would have
+  *passed* `WEATHER_LAT=abc`, because `_env_int/_env_float` fall back to the
+  default on garbage (deliberate, so the wall always boots). The dry-run sets
+  `APP_CONFIG_STRICT=1`, which makes those helpers raise and runs
+  `app/config/strict.py`: `*_COLOR` must be `#rgb/#rrggbb`, `*_ORDER` an
+  integer, `CAL_*_URL` http(s), lat/lon in range, `NIGHT_MODE_START` `HH:MM`,
+  `TRASH_REMINDER_HOUR` 0–23, and the calendar `CronTrigger` must build (a bad
+  `CALENDAR_REFRESH_DAY` used to crash `scheduler.start()` at boot). A normal
+  boot stays lenient.
+- **The dry-run child gets a scrubbed environment.** The running server already
+  has `.env` in `os.environ` and `load_dotenv` never overrides, so a plain
+  inherited env would check the *old* values. Every key from `.env`,
+  `.env.example` and the candidate (and any `CAL_/PERSON_/EVENT_STYLE_/GCAL_`
+  var) is stripped before the child loads the candidate.
+- **`.env` is now loaded by absolute path.** `app/config/env.py` reads
+  `APP_DOTENV_PATH` (relative to the repo root, default `.env`) instead of
+  calling `load_dotenv()` with no path. The default resolves to the same file
+  as before. `deployment.md`'s `AppDirectory` note was updated to match.
+- **`/healthz` returns a `boot` id** (set at process start). Without it the
+  page couldn't tell the old process (still answering for ~1 s after Save) from
+  the relaunched one.
+- **Plain Save shows the dev note.** Save & restart is disabled off-NSSM, so
+  the "restart the dev server by hand" note shows after a plain Save. The API
+  still returns `{restarting: false, note}` for `restart: true` off NSSM
+  (covered by a test).
+- **API responses use the standard envelope** (`{"data": {...},
+  "last_updated"}`), with the spec's `{ok, stderr_tail, diff, …}` inside
+  `data`. Keys and values are also checked before the dry-run: a key must be a
+  valid name and a value must be one line.
+- The section payload also has each section's `intro` (the comment block under
+  its heading) and each key's `group` (`CAL_<KEY>` / `PERSON_<KEY>`) for the
+  Remove buttons. Keys in `.env` that `.env.example` lacks are placed by prefix
+  (`CAL_`, `PERSON_`, …), or under "Other".
+- `env_admin.py` is 205 lines, just over the ~200 guide, and kept as one file
+  because it is a single cohesive flow.
 
 **Already in place** (reuse, don't rebuild):
 - Adding/removing a feed already works without code: set `CAL_<KEY>_URL` in

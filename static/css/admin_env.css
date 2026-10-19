@@ -1,0 +1,193 @@
+/* Admin "Settings (.env)" editor. Reuses admin.css tokens and the .imp-btn /
+   .imp-result styles from admin_import.css. */
+
+.env-drift {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 212, 59, 0.45);
+  background: rgba(255, 212, 59, 0.08);
+  color: #ffe8a3;
+  font-size: 0.9rem;
+}
+.env-drift p { margin: 4px 0; }
+.env-drift .mono { word-break: break-word; }
+.env-drift .imp-btn { min-height: 34px; padding: 4px 12px; font-size: 0.85rem; margin-left: 6px; }
+
+.env-helpers { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.env-helper {
+  min-width: 0;
+  max-width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+#env-path { word-break: break-all; }
+.env-helper[open] { flex: 1 1 100%; }
+.env-helper summary { cursor: pointer; color: var(--accent); }
+.env-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: 10px;
+  margin-top: 10px;
+  align-items: end;
+}
+.env-form label { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+
+.env-form input, .env-input {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: #0e1116;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 0;
+}
+.env-form input[type="color"], .env-swatch {
+  padding: 0;
+  height: 34px;
+  width: 44px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+}
+
+.env-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.env-section > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+.env-section[open] > summary { border-bottom: 1px solid var(--line); }
+.env-intro {
+  margin: 10px 14px 0;
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.env-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  grid-template-areas: "key input" ". meta";
+  gap: 4px 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.env-row:last-child { border-bottom: none; }
+.env-key { grid-area: key; align-self: center; font-size: 0.85rem; word-break: break-all; }
+.env-row > .env-input, .env-color { grid-area: input; }
+.env-meta { grid-area: meta; font-size: 0.78rem; color: var(--muted); }
+/* .env.example comments align columns with spaces, so keep them monospace. */
+.env-intro, .env-help { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.env-help { white-space: pre-wrap; }
+.env-default { color: #a5d8ff; }
+.env-tag {
+  display: inline-block;
+  margin: 3px 6px 0 0;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(255, 212, 59, 0.14);
+  color: #ffe8a3;
+}
+.env-row.staged { background: rgba(116, 192, 252, 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.env-row.removing .env-key { text-decoration: line-through; color: var(--stale); }
+.env-row.absent:not(.staged) .env-key { color: var(--muted); }
+.env-color { display: flex; gap: 8px; align-items: center; }
+.env-color-text { flex: 1; }
+
+.env-group { margin: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; }
+.env-group-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  color: var(--accent);
+  border-bottom: 1px dashed var(--line);
+}
+
+.env-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.env-danger { color: var(--stale); }
+
+.env-new, .env-review {
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.env-new h3, .env-review h3 { margin: 0 0 8px; font-size: 0.95rem; }
+.env-new-row { display: flex; gap: 12px; justify-content: space-between; font-size: 0.85rem; }
+.env-new-row .mono { word-break: break-all; }
+.env-diff { margin: 0 0 8px; padding-left: 18px; font-size: 0.85rem; }
+.env-diff li { word-break: break-word; }
+.env-old { color: var(--muted); }
+.env-newv { color: var(--fresh); }
+.env-ok { color: var(--fresh); margin: 0; }
+.env-bad { color: var(--stale); margin: 0; }
+.env-stderr {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: #0e1116;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #ffb4b4;
+}
+
+/* Staged-changes bar: fixed so it is reachable from anywhere on the page. */
+.env-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  background: #0e1116;
+  border-top: 1px solid var(--accent);
+  z-index: 10;
+}
+.env-bar[hidden] { display: none; }
+body.env-bar-open { padding-bottom: 80px; }
+#env-count { font-weight: 600; margin-right: 6px; }
+
+.env-restarting {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  font-size: 1.2rem;
+  background: rgba(14, 17, 22, 0.88);
+  z-index: 20;
+}
+.env-restarting[hidden] { display: none; }
+
+@media (max-width: 699px) {
+  .env-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "key" "input" "meta"; }
+  .env-form input, .env-input { font-size: 16px; } /* no iOS zoom on focus */
+  .env-bar .imp-btn { flex: 1 1 40%; }
+  body.env-bar-open { padding-bottom: 150px; }
+}

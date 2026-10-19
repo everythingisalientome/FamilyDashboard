@@ -148,3 +148,12 @@ __all__ = [
     "WASTE_BULKY_KEYWORDS",
     "WASTE_RECYCLE_KEYWORDS",
 ]
+
+# The admin dry-run imports this package in strict mode to vet a candidate
+# .env before saving it; a normal boot never runs these checks.
+from app.config.env import STRICT as _STRICT  # noqa: E402
+
+if _STRICT:
+    from app.config.strict import check as _strict_check
+
+    _strict_check()

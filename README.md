@@ -87,6 +87,10 @@ simplest thing that runs on the LAN and is easy to change.
 - **Admin page** — `/admin` (LAN-only, no login) lists every feed with its
   last-fetch time, status, source URL and recent errors, a button to refresh any
   fetcher on demand, and the app log (view the current day, download older days).
+  Its **Settings (.env)** section edits `.env` itself — every setting with its
+  help text, add/remove calendar feeds and persons, a drift banner for keys
+  missing from `.env` — with a dry-run before any write, a backup per save
+  (`data/env-backups/`), and **Save & restart** under the NSSM service.
 - **Resilience** — every fetcher is independent and swallows its own errors;
   one dead feed never blanks the others or the page. The browser reloads itself
   nightly to shed any leaks. The app keeps a rotating daily log under
@@ -150,7 +154,8 @@ commented list). Highlights:
 
 `.env` is git-ignored — it holds capability URLs (calendar/photo share links)
 that anyone with them can read, so it is never committed. Feed health and recent
-errors are visible at **`/admin`**; changes still take effect on restart.
+errors are visible at **`/admin`**, which can also edit `.env` (dry-run checked,
+backed up) and restart the service; changes take effect on restart.
 
 ## Project layout
 
@@ -201,9 +206,8 @@ notes for each phase. Done: Phases 1–3 (the dashboard, calendars, weather,
 photos and alerts), Phase 4 (photo → calendar: the Google Calendar feed and
 JSON importer), Phase 6 (the animated ambient background) and Phase 7 (the
 light per-person layout, now the default wall). Phase 5 deployment polish is
-largely complete (Windows service, Pi kiosk, admin page with feed health and
-logs, and the stale-dot). Remaining: the last Phase 5 item, admin editing
-(feed add/remove and a "Save & restart" button on the admin page).
+complete (Windows service, Pi kiosk, admin page with feed health, logs and
+`.env` editing with Save & restart, and the stale-dot).
 
 ---
 

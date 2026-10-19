@@ -48,15 +48,19 @@ When it finishes it prints the dashboard and admin URLs and the log location.
 
 ### What it configures (and why)
 
-- **`AppDirectory` = repo root.** `app/config/env.py` calls `load_dotenv()` with no path,
-  so it reads `.env` relative to the working directory. If the service ran from
-  anywhere else it would boot on built-in defaults and **silently ignore your
-  `.env`** — no feeds, wrong location. This is the single most important setting.
+- **`AppDirectory` = repo root.** uvicorn imports `app.main` from the working
+  directory, so the service can't start from anywhere else. (`.env` itself is
+  read from the repo root by absolute path — `app/config/env.py`, overridable
+  with `APP_DOTENV_PATH` — so it no longer depends on the working directory.)
 - **`Application` = `.venv\Scripts\python.exe`**, `AppParameters` =
   `-m uvicorn app.main:app --host 0.0.0.0 --port 8000`. No `--reload`, single
   process — APScheduler runs *inside* this process, so a second worker would
   double every scheduled fetch.
 - **Start = auto (at boot).**
+- **`AppEnvironmentExtra FAMILY_WALL_SERVICE=1`.** Tells the admin page it is
+  running under NSSM, which enables its **Save & restart** button (it exits the
+  process and NSSM's restart-on-exit relaunches it). A dev server lacks the
+  marker, so the button is disabled there and the page says to restart by hand.
 - **Restart on exit**, with a 2 s delay and a 5 s throttle so a crash-on-boot
   can't spin into a tight restart loop.
 - **Logs** → `data\logs\dashboard.out.log` and `dashboard.err.log`, rotated
@@ -107,11 +111,45 @@ nssm edit FamilyDashboard
   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
   nssm restart FamilyDashboard
   ```
-- **After editing `.env`**: `nssm restart FamilyDashboard` to pick it up. (The
-  Phase 5 admin "Save & restart" button will do exactly this `nssm restart` for
-  you once feed-editing lands.)
+- **After editing `.env`**: `nssm restart FamilyDashboard` to pick it up, or
+  edit it from the admin page instead (below), which restarts for you.
 - **Change the port**: re-run `.\scripts\install-service.ps1 -Port <n>` (it
   updates both the service and the firewall rule).
+
+### Editing settings from `/admin`
+
+The admin page's **Settings (.env)** section edits the same `.env` (no second
+config store): every `.env.example` key by section with its help text, add /
+remove a calendar feed or person, and a drift banner for keys `.env.example`
+has that `.env` lacks ("Add with defaults" stages them). Changes are staged in
+the page, then:
+
+- **Review** shows each `KEY: old → new` and a **dry-run**: a fresh Python
+  imports `app.config` from the candidate file in strict mode (a bad number,
+  colour, URL, `HH:MM` or calendar schedule fails it). Nothing is written.
+- **Save** re-runs the dry-run, and only if it passes copies the current file
+  to `data\env-backups\.env.<UTC stamp>` (the last 10 are kept) and replaces
+  `.env` atomically. It never writes a file that failed the dry-run.
+- **Save & restart** does the same, then exits the process ~1 s later so NSSM
+  relaunches it with the new settings; the page waits for the new process and
+  reloads itself. The wall keeps showing cached data throughout.
+
+Each save is logged (`dashboard.admin`) with the changed keys; values of
+`*_URL` and `GCAL_*` keys are redacted in the log line.
+
+**One-time after upgrading to this version:** re-run
+`.\scripts\install-service.ps1` (elevated) once so the service gets the
+`FAMILY_WALL_SERVICE=1` marker; until then Save & restart stays disabled and
+you restart with `nssm restart FamilyDashboard` after Save.
+
+**If a save ever bricks the config**, restore the newest good backup and
+restart:
+
+```powershell
+Get-ChildItem data\env-backups -Force | Sort-Object Name   # newest last
+Copy-Item data\env-backups\.env.<stamp> .env
+nssm restart FamilyDashboard
+```
 
 ### Updating the wall
 
@@ -132,7 +170,8 @@ family Google Calendar.
 The deployment `.env` is **separate** from the dev one and is never in git, so
 a pull that adds a setting doesn't add it on the server. After every pull,
 compare it with `.env.example` and copy over any new keys (this bit us on the
-Phase 7 deploy):
+Phase 7 deploy). The admin page's drift banner lists them for you ("Add with
+defaults" stages them); the manual check is:
 
 ```powershell
 # Keys in .env.example that the deployment .env lacks
@@ -246,6 +285,7 @@ nssm set $svc AppParameters "-m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 nssm set $svc AppDirectory  $root
 nssm set $svc DisplayName   "Family Wall Dashboard"
 nssm set $svc Start         SERVICE_AUTO_START
+nssm set $svc AppEnvironmentExtra FAMILY_WALL_SERVICE=1
 nssm set $svc AppStdout     "$root\data\logs\dashboard.out.log"
 nssm set $svc AppStderr     "$root\data\logs\dashboard.err.log"
 nssm set $svc AppRotateFiles 1
@@ -345,9 +385,10 @@ Installed on the wall Pi (`familywall`) as of 2026-10-19.
 
 - **Service starts then stops immediately.** Read `data\logs\dashboard.err.log`.
   Common causes: the venv is missing a dependency, or the port is already in use.
-- **Dashboard shows defaults / no feeds.** `AppDirectory` isn't the repo root, so
-  `.env` wasn't found. Re-run the installer, or `nssm set FamilyDashboard
-  AppDirectory <repo-root>` and restart.
+- **Dashboard shows defaults / no feeds.** `.env` is missing from the repo root
+  (or `APP_DOTENV_PATH` points elsewhere), or a value is unparseable and fell
+  back to its default — open `/admin` → Settings, stage any change and Review:
+  the dry-run checks the whole file, not just the changed key. A bad save can be undone from `data\env-backups\`.
 - **The Pi can't reach it.** Check the firewall rule exists and that the server's
   network is set to **Private** (not Public) in Windows network settings. Confirm
   the server's IP with `ipconfig` and that both devices are on the same subnet.

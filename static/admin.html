@@ -6,6 +6,7 @@
   <title>Dashboard Admin</title>
   <link rel="stylesheet" href="/css/admin.css">
   <link rel="stylesheet" href="/css/admin_import.css">
+  <link rel="stylesheet" href="/css/admin_env.css">
 </head>
 <body>
   <main class="admin">
@@ -71,6 +72,45 @@
       </table>
     </section>
 
+    <section aria-labelledby="env-h" class="env">
+      <h2 id="env-h">Settings (.env)</h2>
+      <p class="hint">
+        Edits <span id="env-path" class="mono">.env</span>. Changes are staged
+        here; Review and Save dry-run them (a fresh server boot) and nothing is
+        written if that fails. Each save backs up the old file to
+        <span class="mono">data/env-backups/</span>. Changes apply on restart.
+      </p>
+      <div id="env-drift" class="env-drift" hidden></div>
+      <div class="env-helpers">
+        <details class="env-helper">
+          <summary>+ Add calendar feed</summary>
+          <form id="env-add-feed" class="env-form">
+            <label>Key <input name="key" required pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="soccer"></label>
+            <label>ICS URL <input name="url" type="url" required placeholder="https://…/calendar.ics"></label>
+            <label>Label <input name="label" placeholder="Soccer"></label>
+            <label>Colour <input name="color" type="color" value="#f783ac"></label>
+            <label>Order <input name="order" type="number" value="100"></label>
+            <button class="imp-btn">Stage feed</button>
+          </form>
+        </details>
+        <details class="env-helper">
+          <summary>+ Add person</summary>
+          <form id="env-add-person" class="env-form">
+            <label>Key <input name="key" required pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="ava"></label>
+            <label>Name <input name="label" required placeholder="Ava"></label>
+            <label>Colour <input name="color" type="color" value="#a78bfa"></label>
+            <label>Order <input name="order" type="number" value="3"></label>
+            <label>Feeds <input name="feeds" placeholder="comma list, e.g. school"></label>
+            <label>Keywords <input name="keywords" placeholder="comma list, e.g. ava"></label>
+            <button class="imp-btn">Stage person</button>
+          </form>
+        </details>
+      </div>
+      <div id="env-sections" class="env-sections"><p class="muted">Loading…</p></div>
+      <div id="env-review" class="env-review" hidden></div>
+      <p id="env-result" class="imp-result" hidden></p>
+    </section>
+
     <section aria-labelledby="logs-h">
       <h2 id="logs-h">Logs</h2>
       <p class="hint">
@@ -90,7 +130,18 @@
     <p class="foot"><a href="/">← Back to the wall display</a></p>
   </main>
 
+  <div id="env-bar" class="env-bar" hidden>
+    <span id="env-count"></span>
+    <button id="env-review-btn" class="imp-btn">Review</button>
+    <button id="env-save" class="imp-btn imp-primary">Save</button>
+    <button id="env-save-restart" class="imp-btn imp-primary">Save &amp; restart</button>
+    <button id="env-discard" class="imp-btn">Discard</button>
+  </div>
+  <div id="env-restarting" class="env-restarting" hidden>Restarting… (NSSM relaunches in ~2 s)</div>
+
   <script src="/js/admin.js"></script>
   <script src="/js/admin_import.js"></script>
+  <script src="/js/admin_env.js"></script>
+  <script src="/js/admin_env_bar.js"></script>
 </body>
 </html>

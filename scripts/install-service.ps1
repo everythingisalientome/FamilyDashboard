@@ -11,6 +11,8 @@
     - Auto-start at boot, auto-restart on crash (throttled against crash loops).
     - stdout/stderr captured to data\logs\ with daily + size-based rotation.
     - An inbound firewall rule so the Pi (and any LAN browser) can reach the port.
+    - FAMILY_WALL_SERVICE=1 in the service environment, which tells the admin
+      page it runs under NSSM so "Save & restart" may exit for a relaunch.
 
   Run from an ELEVATED PowerShell (installing a service needs admin rights).
 
@@ -117,6 +119,9 @@ Invoke-Nssm set $ServiceName AppDirectory $repoRoot
 Invoke-Nssm set $ServiceName DisplayName "Family Wall Dashboard"
 Invoke-Nssm set $ServiceName Description "Serves the family wall dashboard (FastAPI/uvicorn) and runs its scheduled fetch jobs."
 Invoke-Nssm set $ServiceName Start SERVICE_AUTO_START
+# Marker for the admin page: under NSSM, "Save & restart" can just exit and
+# AppExit Restart relaunches it. A dev server lacks this and is never exited.
+Invoke-Nssm set $ServiceName AppEnvironmentExtra FAMILY_WALL_SERVICE=1
 
 # Logs: append to a rotating file, roll daily or at 10 MB.
 Invoke-Nssm set $ServiceName AppStdout $outLog
