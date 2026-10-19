@@ -123,9 +123,24 @@ nssm restart FamilyDashboard
 ```
 
 Run the `pip install` even when you don't think dependencies changed. Phase 7
-pinned `tzdata`, which `zoneinfo` needs on Windows. It also added
-`google-api-python-client`, `google-auth` (for Phase 4) and `pytest`. The app
-doesn't import those three yet, so installing them is harmless.
+pinned `tzdata`, which `zoneinfo` needs on Windows; Phase 4 imports
+`google-api-python-client`, `google-auth` and `google-auth-httplib2` for the
+family Google Calendar.
+
+#### New `.env` keys on deploy
+
+The deployment `.env` is **separate** from the dev one and is never in git, so
+a pull that adds a setting doesn't add it on the server. After every pull,
+compare it with `.env.example` and copy over any new keys (this bit us on the
+Phase 7 deploy):
+
+```powershell
+# Keys in .env.example that the deployment .env lacks
+$have = (Get-Content .env) -replace '=.*' | Where-Object { $_ -match '^[A-Z]' }
+(Get-Content .env.example) -replace '=.*' | Where-Object { $_ -match '^[A-Z]' -and $_ -notin $have }
+```
+
+Then `nssm restart FamilyDashboard`.
 
 The Pi's kiosk URL doesn't change. `http://<server-ip>:8000/` is now the light
 per-person wall (Phase 7). The previous dark wall is still at
@@ -139,6 +154,44 @@ cached before that header existed, so on a plain launch it can be treated as
 fresh for up to about a week. A reload revalidates it, so the wall switches at
 the nightly 3 AM self-reload. To flip it right away, press F5 on a keyboard
 plugged into the Pi. A reboot alone may not be enough.
+
+### Google Calendar (service account)
+
+The family feed (`family`) reads the household Google Calendar through the
+Calendar API with a **service account**: no OAuth consent screen, no token
+that expires. It is read on the nightly calendar schedule, at boot, and on
+`/admin` → refresh *calendars*. One-time setup:
+
+1. **Create the service account.** In the [Google Cloud console](https://console.cloud.google.com/),
+   pick (or create) a project, enable the **Google Calendar API**, then
+   *IAM & Admin → Service accounts → Create service account* (no roles
+   needed). Note its email, `…@….iam.gserviceaccount.com`.
+2. **Download a key.** On the service account: *Keys → Add key → Create new
+   key → JSON*. Move the file out of Downloads to **`data\gcal-sa.json`** in
+   the repo (git-ignored; never under `static\`). Treat it like a password.
+3. **Share the calendar with it.** In Google Calendar: *Settings → the family
+   calendar → Share with specific people → Add* the service-account email
+   with **Make changes to events** (needed later by the importer; reading
+   works with it too). The app asks only for the `calendar.events` scope.
+4. **Copy the calendar id.** Same settings page → *Integrate calendar* →
+   **Calendar ID**. Use that explicit id, never `primary` (for a service
+   account `primary` is its own empty calendar).
+5. **Set the two `.env` keys:**
+   ```ini
+   GCAL_CALENDAR_ID=<the calendar id>
+   GCAL_SERVICE_ACCOUNT_FILE=data/gcal-sa.json
+   ```
+   Remove any old `CAL_FAMILY_URL` (it is ignored now and logs a warning).
+   Keep `CAL_FAMILY_LABEL/_COLOR/_ORDER`; they still style the feed.
+6. **Check it:** `.\.venv\Scripts\python.exe scripts\test_calendar.py` from the repo
+   root prints the service-account email and the next 10 events. Add `--write`
+   to also insert and immediately delete a test event (proves the share is
+   *Make changes to events*).
+7. **Restart:** `nssm restart FamilyDashboard`. `/admin` shows an
+   `events:family` row with the calendar id as its source.
+
+A failure (key missing, share removed, Google unreachable) shows as an error on
+that row; the wall keeps the last good family events.
 
 ## 5. Uninstall
 

@@ -1,8 +1,8 @@
-"""LAN-only admin API: fetcher health, manual refresh, and log access.
+"""LAN-only admin API: fetcher health and manual refresh.
 
 Read-only status (with source URLs and staleness), a fire-and-forget refresh
-trigger, a way to clear an orphaned job row, and endpoints to view/download the
-app's rotating log. No auth — this is a one-household LAN app.
+trigger, and a way to clear an orphaned job row. The log endpoints live in
+admin_logs.py. No auth — this is a one-household LAN app.
 
 Note: source URLs are capability URLs (anyone holding them can read the feed).
 Showing them here is consistent with the LAN-only, one-household model; the admin
@@ -13,16 +13,22 @@ import logging
 import threading
 from typing import Any, Callable
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException
 
-from app import config, logging_setup, staleness
+from app import config, staleness
 from app.db import connect
 from app.envelope import envelope
-from app.fetchers import alerts, calendars, photos, weather
+from app.fetchers import alerts, calendars, gcal, photos, weather
 
 router = APIRouter()
 log = logging.getLogger("dashboard.admin")
+
+def _refresh_calendars() -> None:
+    """"The calendars" to the user: the ICS feeds plus the Google family feed."""
+    calendars.run()
+    if config.GCAL_CALENDAR_ID:
+        gcal.run()
+
 
 #: The schedulable fetchers, keyed by the name the refresh endpoint takes. Each
 #: run() already swallows its own exceptions (the scheduler contract), so these
@@ -30,11 +36,9 @@ log = logging.getLogger("dashboard.admin")
 _FETCHERS: dict[str, Callable[[], None]] = {
     "weather": weather.run,
     "alerts": alerts.run,
-    "calendars": calendars.run,
+    "calendars": _refresh_calendars,
     "photos": photos.run,
 }
-
-_MAX_TAIL_LINES = 5000
 
 # Staleness math (interval_for / stale_after / age_seconds / feeds_by_job /
 # active_jobs) lives in app.staleness, shared with the dashboard stale-dot so
@@ -44,6 +48,8 @@ _MAX_TAIL_LINES = 5000
 def _source_url(job: str, feed_jobs: dict[str, Any]) -> str:
     """The URL (or configured point) a job pulls from, for display."""
     point = f"{config.WEATHER_LAT},{config.WEATHER_LON}"
+    if job == gcal.JOB and job in feed_jobs:
+        return config.GCAL_CALENDAR_ID
     if job in feed_jobs:
         return feed_jobs[job].url
     if job in ("weather:current", "weather:forecast", "weather:hourly"):
@@ -163,40 +169,3 @@ def admin_delete_job(job: str) -> dict[str, Any]:
 
     log.info("Cleared orphaned job %s (%d event rows)", job, removed_events)
     return envelope({"job": job, "removed_events": removed_events})
-
-
-# --- Logs ------------------------------------------------------------------
-
-
-@router.get("/admin/logs")
-def admin_logs(lines: int = Query(300, ge=1, le=_MAX_TAIL_LINES)) -> dict[str, Any]:
-    """Tail of the current (today's) log file."""
-    path = logging_setup.current_log_path()
-    tail_lines, truncated = logging_setup.tail(path, lines)
-    return envelope(
-        {
-            "file": path.name,
-            "text": "\n".join(tail_lines),
-            "line_count": len(tail_lines),
-            "truncated": truncated,
-            "exists": path.exists(),
-        }
-    )
-
-
-@router.get("/admin/logs/files")
-def admin_log_files() -> dict[str, Any]:
-    """All log files (current + rotated), newest first, for the downloads list."""
-    return envelope({"files": logging_setup.list_log_files()})
-
-
-@router.get("/admin/logs/download")
-def admin_log_download(name: str = Query(...)) -> FileResponse:
-    """Download one log file as an attachment. Whitelisted to real log files."""
-    if not logging_setup.is_log_file(name):
-        raise HTTPException(status_code=400, detail="not a log file")
-    path = (config.LOG_DIR / name).resolve()
-    # Defence in depth: the resolved path must sit directly in LOG_DIR.
-    if path.parent != config.LOG_DIR.resolve() or not path.is_file():
-        raise HTTPException(status_code=404, detail="not found")
-    return FileResponse(path, media_type="text/plain", filename=name)

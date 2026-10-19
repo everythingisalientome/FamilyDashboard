@@ -16,6 +16,7 @@ from app.config import (
 )
 from app.db import connect, last_success
 from app.envelope import envelope
+from app.event_window import grid_start
 from app.event_styles import EVENT_CATEGORIES, categorize
 from app.events_derived import hero, radar, waste
 from app.fetchers.calendars import job_name
@@ -25,11 +26,6 @@ _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 router = APIRouter()
-
-
-def grid_start(today: date) -> date:
-    """First date the month grid can show — the week before the 1st."""
-    return today.replace(day=1) - timedelta(days=7)
 
 
 @router.get("/events")

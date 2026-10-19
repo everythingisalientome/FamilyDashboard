@@ -52,9 +52,12 @@ simplest thing that runs on the LAN and is easy to change.
 - **The previous wall (`/v1`)**: the dark layout with the agenda, upcoming
   ticker, alerts pill, stale-dot and ambient background is unchanged. Open
   `/v1` to get it back.
-- **Calendars** — any number of ICS feeds (Google Calendar, school district,
-  ReCollect trash pickup, …), discovered from `.env`, expanded 30 days ahead
-  (recurring events included), merged with per-source colours.
+- **Calendars** — the family **Google Calendar**, read through the Calendar API
+  with a service account (changes made on a phone show at the next refresh, no
+  hours-long ICS cache; an event's `person` tag puts it in that child's
+  column), plus any number of ICS feeds (school district, ReCollect trash
+  pickup, …) discovered from `.env`. All expanded 30 days ahead (recurring
+  events included) and merged with per-source colours.
 - **Event categories** — titles matching keyword categories are colour-coded
   (holiday = red, first-day/early-dismissal = gold, end-of-quarter = purple).
   Multi-day spans (a break week) tint their whole run of day cells as one block.
@@ -88,6 +91,7 @@ simplest thing that runs on the LAN and is easy to change.
   (runs inside the FastAPI process)
 - SQLite for the cache (`data/dashboard.db`), stdlib `sqlite3`, no ORM
 - `httpx`, `icalendar` + `recurring-ical-events`, `python-dotenv`
+- `google-api-python-client` + `google-auth` for the family Google Calendar
 - Frontend: plain HTML/CSS/JS in `static/` — no framework, no build step, no npm
 
 ## Getting started
@@ -121,7 +125,8 @@ commented list). Highlights:
 
 | Variable | What it does |
 |---|---|
-| `CAL_<KEY>_URL` / `_LABEL` / `_COLOR` / `_ORDER` | Define a calendar feed. Add a calendar by adding a new block and restarting. |
+| `GCAL_CALENDAR_ID` / `GCAL_SERVICE_ACCOUNT_FILE` | The family Google Calendar (shown as feed `family`; `CAL_FAMILY_LABEL/_COLOR/_ORDER` still style it) and the service-account key, default `data/gcal-sa.json`. Setup in [docs/deployment.md](docs/deployment.md). |
+| `CAL_<KEY>_URL` / `_LABEL` / `_COLOR` / `_ORDER` | Define an ICS calendar feed. Add a calendar by adding a new block and restarting. |
 | `CALENDAR_REFRESH_DAY` / `_HOUR` / `_MINUTE` | When calendars refresh (`*` = nightly; a weekday name = weekly). |
 | `WEATHER_LAT` / `WEATHER_LON` / `NWS_USER_AGENT` | Weather location and NWS contact string. |
 | `FORECAST_DAYS`, `WEATHER_REFRESH_SECONDS` | Forecast length (not counting today) and refresh interval. |

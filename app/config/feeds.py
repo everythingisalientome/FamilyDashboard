@@ -3,15 +3,19 @@
 import os
 import re
 from dataclasses import dataclass, replace
+from pathlib import Path
 
-from app.config.env import _env_int, _env_str
+from app.config.env import BASE_DIR, _env_int, _env_str
 
 # --- Calendars -------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class CalendarFeed:
-    """One ICS source. ``key`` is the stable id stored on every event row."""
+    """One calendar source. ``key`` is the stable id stored on every event row.
+
+    ``url`` is the ICS URL; blank for the Google-API family feed.
+    """
 
     key: str
     label: str
@@ -23,9 +27,9 @@ class CalendarFeed:
     alert_color: str = ""
 
 
-#: Every ICS feed — the family Google Calendar included — is a capability URL
-#: (anyone holding it can read the calendar), so all of them live in ``.env``,
-#: never here. A feed is defined entirely by environment variables:
+#: Every ICS feed is a capability URL (anyone holding it can read the
+#: calendar), so all of them live in ``.env``, never here. A feed is defined
+#: entirely by environment variables:
 #:
 #:     CAL_<KEY>_URL      the ICS URL (required — its presence defines the feed)
 #:     CAL_<KEY>_LABEL    legend label   (optional; defaults to <Key>)
@@ -35,6 +39,11 @@ class CalendarFeed:
 #: Nothing enumerates the feeds — they are discovered by scanning the
 #: environment, so adding another calendar tomorrow is just three new lines in
 #: ``.env`` and a restart. See ``.env.example`` for the full set.
+#:
+#: The one exception is ``family``: it is read through the Google Calendar API
+#: (app/fetchers/gcal.py), not ICS, and exists when ``GCAL_CALENDAR_ID`` is set.
+#: It keeps its ``CAL_FAMILY_LABEL/_COLOR/_ORDER/_ALERT_COLOR`` settings and has
+#: ``url=""`` so the ICS fetcher skips it.
 _FEED_URL_RE = re.compile(r"^CAL_(.+)_URL$")
 
 #: Chip colours handed out, in order, to feeds that don't name their own.
@@ -46,6 +55,43 @@ _FEED_PALETTE: tuple[str, ...] = (
     "#a78bfa",  # violet
     "#ffd43b",  # amber
 )
+
+# --- Google Calendar (the family feed) -------------------------------------
+
+#: Explicit calendar id from Google Calendar -> Settings -> Integrate calendar
+#: (never ``primary``: for a service account that is its own empty calendar).
+#: Blank = the family feed is disabled.
+GCAL_CALENDAR_ID: str = _env_str("GCAL_CALENDAR_ID", "")
+
+#: Service-account JSON key; a relative path resolves against the repo root.
+_GCAL_SA_RAW = Path(_env_str("GCAL_SERVICE_ACCOUNT_FILE", "data/gcal-sa.json"))
+GCAL_SERVICE_ACCOUNT_FILE: Path = (
+    _GCAL_SA_RAW if _GCAL_SA_RAW.is_absolute() else BASE_DIR / _GCAL_SA_RAW
+)
+
+#: One scope for reading today and writing (the Phase 4 importer) later.
+GCAL_SCOPES: tuple[str, ...] = ("https://www.googleapis.com/auth/calendar.events",)
+
+#: The feed key the Google calendar is stored under (colours, order, fetch_meta).
+GCAL_FEED_KEY = "family"
+
+#: Retired ICS variables for the family calendar, still set in ``.env``. Logged
+#: as ignored at startup (logging isn't configured yet at import time).
+RETIRED_FAMILY_VARS: tuple[str, ...] = tuple(
+    name
+    for name in ("CAL_FAMILY_URL", "FAMILY_CALENDAR_ICS_URL")
+    if os.getenv(name, "").strip()
+)
+
+
+def _feed_entry(raw_key: str, key: str, url: str) -> tuple[int, str, CalendarFeed]:
+    """(order, key, feed) from the optional ``CAL_<KEY>_*`` display settings."""
+    label = os.getenv(f"CAL_{raw_key}_LABEL", "").strip() or key.title()
+    color = os.getenv(f"CAL_{raw_key}_COLOR", "").strip()
+    alert_color = os.getenv(f"CAL_{raw_key}_ALERT_COLOR", "").strip()
+    order_raw = os.getenv(f"CAL_{raw_key}_ORDER", "").strip()
+    order = int(order_raw) if order_raw.lstrip("-").isdigit() else 100
+    return order, key, CalendarFeed(key, label, url, color, alert_color)
 
 
 def _load_calendar_feeds() -> tuple[CalendarFeed, ...]:
@@ -60,21 +106,12 @@ def _load_calendar_feeds() -> tuple[CalendarFeed, ...]:
             continue
         raw_key = match.group(1)
         key = raw_key.lower()
-        label = os.getenv(f"CAL_{raw_key}_LABEL", "").strip() or key.title()
-        color = os.getenv(f"CAL_{raw_key}_COLOR", "").strip()
-        alert_color = os.getenv(f"CAL_{raw_key}_ALERT_COLOR", "").strip()
-        order_raw = os.getenv(f"CAL_{raw_key}_ORDER", "").strip()
-        order = int(order_raw) if order_raw.lstrip("-").isdigit() else 100
-        discovered.append(
-            (order, key, CalendarFeed(key, label, url, color, alert_color))
-        )
+        if key == GCAL_FEED_KEY:  # retired: the family feed is the Google API
+            continue
+        discovered.append(_feed_entry(raw_key, key, url))
 
-    # Back-compat: the original single-feed variable still works if present.
-    legacy = os.getenv("FAMILY_CALENDAR_ICS_URL", "").strip()
-    if legacy and not any(key == "family" for _, key, _ in discovered):
-        discovered.append(
-            (0, "family", CalendarFeed("family", "Family", legacy, ""))
-        )
+    if GCAL_CALENDAR_ID:
+        discovered.append(_feed_entry("FAMILY", GCAL_FEED_KEY, ""))
 
     discovered.sort(key=lambda item: (item[0], item[1]))
 

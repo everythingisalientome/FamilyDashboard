@@ -49,7 +49,11 @@ def age_seconds(iso: str | None) -> float | None:
 
 
 def feeds_by_job() -> dict[str, Any]:
-    """Map each configured feed's job id to its CalendarFeed."""
+    """Map each configured feed's job id to its CalendarFeed.
+
+    Includes ``events:family`` (the Google feed) only when GCAL_CALENDAR_ID is
+    set, since only then is it in CALENDAR_FEEDS.
+    """
     return {calendars.job_name(feed): feed for feed in config.CALENDAR_FEEDS}
 
 

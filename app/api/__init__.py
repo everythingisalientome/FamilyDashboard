@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api import (
     admin,
+    admin_logs,
     alerts,
     backgrounds,
     events,
@@ -21,4 +22,5 @@ router.include_router(events.router)
 router.include_router(weather.router)
 router.include_router(alerts.router)
 router.include_router(admin.router)
+router.include_router(admin_logs.router)
 router.include_router(status.router)

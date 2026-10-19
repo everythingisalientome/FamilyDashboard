@@ -17,7 +17,12 @@ const WEEK_LABELS = { regular: 'REGULAR WEEK', recycle: 'RECYCLING WEEK', bulky:
 export function renderHero(data) {
   const persons = new Map((data.persons ?? []).map((p) => [p.key, p]));
   const columns = (data.hero?.persons ?? []).slice(0, HERO_PERSONS);
-  kidsEl.replaceChildren(...columns.map((col) => personColumn(col, persons.get(col.key))));
+  if (!persons.size) {
+    // No PERSON_* in .env: say so instead of leaving a blank gold block.
+    kidsEl.replaceChildren(el('div', 'kids-empty', 'No people configured — add PERSON_<KEY>_LABEL to .env'));
+  } else {
+    kidsEl.replaceChildren(...columns.map((col) => personColumn(col, persons.get(col.key))));
+  }
   renderFamily(data.hero?.family ?? {});
   renderWaste(data.waste ?? {});
 }

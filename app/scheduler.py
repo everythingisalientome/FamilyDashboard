@@ -19,11 +19,13 @@ from app.config import (
     CALENDAR_REFRESH_HOUR,
     CALENDAR_REFRESH_MINUTE,
     DISPLAY_TZ,
+    GCAL_CALENDAR_ID,
     PHOTO_SYNC_REFRESH_SECONDS,
     PHOTOS_ALBUM_URL,
+    RETIRED_FAMILY_VARS,
     WEATHER_REFRESH_SECONDS,
 )
-from app.fetchers import alerts, calendars, photos, weather
+from app.fetchers import alerts, calendars, gcal, photos, weather
 
 log = logging.getLogger("dashboard.scheduler")
 
@@ -90,6 +92,18 @@ def start() -> BackgroundScheduler:
         DISPLAY_TZ,
         CALENDAR_REFRESH_DAY,
     )
+
+    # The family Google Calendar: same nightly cron + boot kick as the ICS
+    # calendars, as its own job so one can't hold up the other.
+    for name in RETIRED_FAMILY_VARS:
+        log.warning("%s is ignored: the family feed is GCAL_CALENDAR_ID now", name)
+    if GCAL_CALENDAR_ID:
+        scheduler.add_job(
+            gcal.run, calendar_trigger, id="gcal", next_run_time=_soon()
+        )
+        log.info("Scheduled Google Calendar %s with calendars", GCAL_CALENDAR_ID)
+    else:
+        log.info("Google Calendar feed disabled (GCAL_CALENDAR_ID unset)")
 
     # Photos: only if a Google Photos album is configured. Same interval + boot
     # kick as weather, so a freshly set album fills the slideshow right away.

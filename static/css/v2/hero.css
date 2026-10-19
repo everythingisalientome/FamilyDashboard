@@ -13,6 +13,17 @@
 
 .kids { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
 
+/* Empty roster: one centred line across both columns. */
+.kids-empty {
+  grid-column: 1 / -1;
+  align-self: center;
+  padding: 0 24px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  opacity: .7;
+}
+
 .person {
   display: flex;
   flex-direction: column;

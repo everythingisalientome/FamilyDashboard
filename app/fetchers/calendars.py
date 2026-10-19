@@ -1,5 +1,7 @@
 """Fetch every configured ICS feed and cache the next 30 days of events.
 
+The family feed (blank ``url``) is the Google Calendar API — see gcal.py.
+
 Each feed is replaced in the database only after its own fetch and parse both
 succeed, so one dead feed leaves the others — and its own last good data —
 untouched on the wall.
@@ -7,7 +9,7 @@ untouched on the wall.
 
 import logging
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 
 import httpx
@@ -15,11 +17,11 @@ import httpx
 from app.config import (
     CALENDAR_FEEDS,
     DISPLAY_TZ,
-    EVENT_HORIZON_DAYS,
     FETCH_TIMEOUT_SECONDS,
     CalendarFeed,
 )
 from app.db import connect, record_attempt, record_failure, record_success
+from app.event_window import fetch_window
 from app.fetchers.ics import parse_events
 
 log = logging.getLogger("dashboard.calendars")
@@ -31,17 +33,16 @@ def job_name(feed: CalendarFeed) -> str:
 
 def run() -> None:
     """Refresh all calendar feeds. Never raises — the scheduler must survive."""
-    if not CALENDAR_FEEDS:
-        log.warning("No calendar feeds configured")
+    ics_feeds = [feed for feed in CALENDAR_FEEDS if feed.url]
+    if not ics_feeds:
+        log.warning("No ICS calendar feeds configured")
         return
 
     # Reach back past the 1st so the month grid's earlier cells and its
     # leading week from the previous month are populated too.
-    today = datetime.now(DISPLAY_TZ).date()
-    start = today.replace(day=1) - timedelta(days=7)
-    end = today + timedelta(days=EVENT_HORIZON_DAYS)
+    start, end = fetch_window(datetime.now(DISPLAY_TZ).date())
 
-    for feed in CALENDAR_FEEDS:
+    for feed in ics_feeds:
         try:
             _refresh_feed(feed, start, end)
         except Exception as exc:
@@ -58,7 +59,7 @@ def _refresh_feed(feed: CalendarFeed, start: date, end: date) -> None:
     rows = parse_events(text, start, end)
 
     with connect() as conn:
-        _replace_source(conn, feed.key, rows)
+        replace_source(conn, feed.key, rows)
         record_success(conn, job_name(feed))
 
     log.info("Calendar %s: %d events through %s", feed.key, len(rows), end)
@@ -74,20 +75,25 @@ def _fetch(url: str) -> str:
         return response.text
 
 
-def _replace_source(
+def replace_source(
     conn: sqlite3.Connection, source: str, rows: list[dict[str, Any]]
 ) -> None:
-    """Swap in the new rows for one source inside a single transaction."""
+    """Swap in the new rows for one source inside a single transaction.
+
+    ``person``/``kind`` are optional per row (only the Google feed sets them).
+    """
     conn.execute("DELETE FROM events WHERE source = ?", (source,))
     conn.executemany(
         """
         INSERT INTO events (
             source, uid, title, start_utc, end_utc, start_date_local,
-            end_date_local, start_time_local, all_day, location, description
+            end_date_local, start_time_local, all_day, location, description,
+            person, kind
         ) VALUES (
             :source, :uid, :title, :start_utc, :end_utc, :start_date_local,
-            :end_date_local, :start_time_local, :all_day, :location, :description
+            :end_date_local, :start_time_local, :all_day, :location, :description,
+            :person, :kind
         )
         """,
-        [{**row, "source": source} for row in rows],
+        [{"person": None, "kind": None, **row, "source": source} for row in rows],
     )

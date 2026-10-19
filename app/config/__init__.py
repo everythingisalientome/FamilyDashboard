@@ -23,6 +23,11 @@ from app.config.feeds import (
     CALENDAR_REFRESH_MINUTE,
     CalendarFeed,
     EVENT_HORIZON_DAYS,
+    GCAL_CALENDAR_ID,
+    GCAL_FEED_KEY,
+    GCAL_SCOPES,
+    GCAL_SERVICE_ACCOUNT_FILE,
+    RETIRED_FAMILY_VARS,
 )
 from app.config.persons import (
     FAMILY_FEEDS,
@@ -89,6 +94,11 @@ __all__ = [
     "CALENDAR_REFRESH_MINUTE",
     "CalendarFeed",
     "EVENT_HORIZON_DAYS",
+    "GCAL_CALENDAR_ID",
+    "GCAL_FEED_KEY",
+    "GCAL_SCOPES",
+    "GCAL_SERVICE_ACCOUNT_FILE",
+    "RETIRED_FAMILY_VARS",
     "FAMILY_FEEDS",
     "PERSONS",
     "PERSON_COLOR_FEEDS",

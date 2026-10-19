@@ -61,7 +61,21 @@ def _to_row(component: Any) -> dict[str, Any] | None:
     dtstart = component["DTSTART"].dt
     dtend = component["DTEND"].dt if "DTEND" in component else None
 
-    # A bare date means an all-day event, and its DTEND is exclusive.
+    return {
+        "uid": str(component.get("UID", "")) or None,
+        "title": title,
+        **time_fields(dtstart, dtend),
+        "location": str(component.get("LOCATION", "")).strip() or None,
+        "description": str(component.get("DESCRIPTION", "")).strip()[:500] or None,
+    }
+
+
+def time_fields(dtstart: date | datetime, dtend: date | datetime | None) -> dict[str, Any]:
+    """The events-row time columns for one occurrence.
+
+    A bare ``date`` start means all-day, with an exclusive end (RFC 5545 and
+    the Google Calendar API agree). Shared with the Google fetcher (gcal.py).
+    """
     all_day = not isinstance(dtstart, datetime)
     if all_day:
         start_date = dtstart
@@ -86,16 +100,12 @@ def _to_row(component: Any) -> dict[str, Any] | None:
         start_time_local = start_local.strftime("%H:%M")
 
     return {
-        "uid": str(component.get("UID", "")) or None,
-        "title": title,
         "start_utc": start_utc,
         "end_utc": end_utc,
         "start_date_local": start_date.isoformat(),
         "end_date_local": end_date.isoformat(),
         "start_time_local": start_time_local,
         "all_day": int(all_day),
-        "location": str(component.get("LOCATION", "")).strip() or None,
-        "description": str(component.get("DESCRIPTION", "")).strip()[:500] or None,
     }
 
 

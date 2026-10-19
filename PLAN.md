@@ -369,7 +369,7 @@ a pre-existing favicon 404).
 
 ---
 
-## Phase 4 — Photo → calendar: Google Calendar feed + JSON importer  [ ]
+## Phase 4 — Photo → calendar: Google Calendar feed + JSON importer  [~]
 
 **Goal:** Family events (doctor visits, daycare closures, trips, parties,
 reminders) get onto the wall and onto everyone's phones with the least typing.
@@ -450,6 +450,49 @@ a rescheduled appointment replaces its predecessor.
 **Known boundary:** the importer is the first thing on `/admin` that writes
 outside the house. It stays LAN-only / no-auth per the one-household model; the
 service-account key grants *events only* on *one* calendar.
+
+**Step 1 done (2026-10-18) — Google Calendar feed, read-only.** Verified on a
+dev server with the real key: boot + `POST /api/admin/refresh/calendars` log
+`Calendar family: 2 events through 2026-11-17`, `/api/admin/status` shows
+`events:family` (source = the calendar id, 26 h window, no error), and
+`/api/events` + `/v2` show the two Oct 19 10:00 test events on the family line
+and grid (untagged, no name in the title → *Family*). No writer, importer or
+admin tab yet.
+- `app/fetchers/gcal.py` — `run()` builds the service from
+  `GCAL_SERVICE_ACCOUNT_FILE` (scope `calendar.events`), `events.list` over the
+  grid window (`singleEvents`, `orderBy=startTime`, `timeZone=DISPLAY_TZ_NAME`,
+  250/page, follows `nextPageToken`, max 20 pages), skips `cancelled`, keeps
+  `fromGmail`, maps `extendedProperties.private.person` (lowercased) / `kind`
+  onto the `person`/`kind` columns, replace-all for `family` + `record_*`.
+  Missing key file or blank id → `record_failure`, rows untouched.
+- **Timeout:** `httplib2.Http(timeout=FETCH_TIMEOUT_SECONDS)` inside
+  `google_auth_httplib2.AuthorizedHttp`, not a process-wide socket default.
+  `google-auth-httplib2` + `httplib2` are now pinned in requirements.txt (they
+  were already transitive deps). The Google imports are lazy, so a deploy that
+  skipped `pip install` still boots and only this feed records the error.
+- **Config:** `GCAL_CALENDAR_ID`, `GCAL_SERVICE_ACCOUNT_FILE` (default
+  `data/gcal-sa.json`, relative paths from the repo root). When the id is set,
+  `family` is added to `CALENDAR_FEEDS` with `url=""` and the existing
+  `CAL_FAMILY_*` label/colour/order; the ICS fetcher skips blank-url feeds.
+  `CAL_FAMILY_URL` *and* the older `FAMILY_CALENDAR_ICS_URL` are always
+  ignored now (warning logged at scheduler start if set).
+- **Shared code (deviation):** `grid_start` moved to a new `app/event_window.py`
+  (+ `fetch_window`), used by both fetchers and `/api/events`. The ICS date
+  math was extracted to `ics.time_fields()` and reused by gcal, so the
+  exclusive all-day end and midnight-end rules are one implementation.
+  `calendars.replace_source` is public and writes `person`/`kind`.
+- **Scheduler/admin:** job `gcal` on the calendars `CronTrigger` + boot kick,
+  only when configured. Refresh *calendars* runs ICS then gcal. The log
+  endpoints moved out of `admin.py` into `app/api/admin_logs.py` (deviation, to
+  keep admin.py under ~200 lines).
+- `scripts/test_calendar.py` reads `.env` via `app.config`; read-only by
+  default, `--write` inserts and immediately deletes a test event (the old
+  script left one behind on every run — the Oct 19 test events came from it).
+- v2 hero: an empty `persons` roster renders "No people configured — add
+  PERSON_<KEY>_LABEL to .env" instead of a blank gold block.
+- Tests: `tests/test_gcal.py` (fake two-page service, row mapping, exclusive
+  end, UTC, paging, failure paths, person/family attribution, config feed
+  injection, ICS skip). 36 tests pass.
 
 ---
 
