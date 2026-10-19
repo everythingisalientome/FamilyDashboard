@@ -6,12 +6,13 @@ Pure functions over the API's own event dicts (``source``, ``title``,
 all-day first, then start time — so "earliest" is simply "first in the list".
 """
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from datetime import date, datetime, timedelta
 from typing import Any
 
 from app.alert_rules import matches_trash
 from app.config import (
+    CALENDAR_FEEDS,
     EVENT_EXCLUDE_KEYWORDS,
     FAMILY_FEEDS,
     HERO_HOLIDAY_CATEGORIES,
@@ -28,6 +29,9 @@ Event = dict[str, Any]
 #: Most entries the "On the radar" footer can hold.
 RADAR_MAX = 8
 
+#: Feed key -> CAL_<KEY>_CLOSED_LABEL, for the feeds that set one.
+CLOSED_LABELS: dict[str, str] = {f.key: f.closed_label for f in CALENDAR_FEEDS if f.closed_label}
+
 
 def is_excluded(title: str | None, keywords: tuple[str, ...] = EVENT_EXCLUDE_KEYWORDS) -> bool:
     """True when ``title`` contains an exclusion keyword (case-insensitive substring)."""
@@ -41,6 +45,19 @@ def is_upcoming(event: Event, today: date, now: datetime) -> bool:
         return event["end_date"] >= today.isoformat()
     ends = event["end_utc"] or event["start_utc"]
     return datetime.fromisoformat(ends) >= now
+
+
+def closed_title(
+    event: Event,
+    labels: Mapping[str, str] = CLOSED_LABELS,
+    holiday_categories: Collection[str] = HERO_HOLIDAY_CATEGORIES,
+) -> str:
+    """Hero/radar title: "<label> – <title before its first ':'>" for a holiday
+    from a feed with a closed label, else the raw title."""
+    label = labels.get(event["source"])
+    if not label or event["category"] not in holiday_categories:
+        return event["title"]
+    return f"{label} – {event['title'].split(':', 1)[0].strip()}"
 
 
 def _first(events: list[Event], count: int = 1) -> list[Event | None]:
@@ -58,17 +75,24 @@ def hero(
     roster: tuple[Person, ...] = PERSONS,
     family_feeds: Collection[str] = FAMILY_FEEDS,
     holiday_categories: Collection[str] = HERO_HOLIDAY_CATEGORIES,
+    closed_labels: Mapping[str, str] = CLOSED_LABELS,
 ) -> dict[str, Any]:
     """Per-person NEXT UP / NEXT HOLIDAY for the first two persons, plus the
-    family line (family-feed events that matched nobody)."""
+    family line (family-feed events that matched nobody).
+
+    NEXT UP skips holidays — they already show on the NEXT HOLIDAY line, whose
+    event carries its closed-label title (a copy; the grid's event is untouched).
+    """
     upcoming = [e for e in events if is_upcoming(e, today, now)]
 
     columns: list[dict[str, Any]] = []
     for person in roster[:2]:
         pool = [e for e in upcoming if person.key in e["persons"]]
         holidays = [e for e in pool if e["category"] in holiday_categories]
-        (nxt,) = _first(pool)
+        (nxt,) = _first([e for e in pool if e["category"] not in holiday_categories])
         (holiday,) = _first(holidays)
+        if holiday:
+            holiday = {**holiday, "title": closed_title(holiday, closed_labels, holiday_categories)}
         columns.append({"key": person.key, "next": nxt, "next_holiday": holiday})
 
     family = [e for e in upcoming if e["source"] in family_feeds and not e["persons"]]
@@ -84,10 +108,13 @@ def radar(
     today: date,
     days: int = RADAR_DAYS,
     keywords: tuple[str, ...] = RADAR_KEYWORDS,
+    closed_labels: Mapping[str, str] = CLOSED_LABELS,
+    holiday_categories: Collection[str] = HERO_HOLIDAY_CATEGORIES,
 ) -> list[dict[str, Any]]:
     """Keyword events overlapping today..today+days, one per (start, title).
 
-    Matching is a case-insensitive substring, as for the v1 highlights ticker.
+    Matching (and dedupe) use the raw title, a case-insensitive substring as for
+    the v1 highlights ticker; the entry shows its closed-label title.
     Spans are returned whole; the page collapses them to "Nov 26–27".
     """
     start, end = today.isoformat(), (today + timedelta(days=days)).isoformat()
@@ -109,7 +136,7 @@ def radar(
             {
                 "start_date": e["start_date"],
                 "end_date": e["end_date"],
-                "title": e["title"],
+                "title": closed_title(e, closed_labels, holiday_categories),
                 "category": e["category"],
             }
         )

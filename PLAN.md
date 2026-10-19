@@ -1086,6 +1086,16 @@ is now the package `app/config/` (`env`, `feeds`, `persons`, `weather`,
 `alerts`, `display`; photo settings went to `display`), with `__init__`
 re-exporting all 55 public names, values verified identical.
 
+**Hero refinements (2026-10-18).** NEXT UP now skips `HERO_HOLIDAY_CATEGORIES`
+events (they are already on the NEXT HOLIDAY line); holidays still feed
+next_holiday, the grid and the radar. New optional `CAL_<KEY>_CLOSED_LABEL`
+(`CalendarFeed.closed_label`; `.env` sets `CAL_SCHOOL_CLOSED_LABEL=School closed`):
+holiday events from that feed show "<label> – <title before its first ':'>" on
+the hero next_holiday and radar entries (a copy; grid chips and the raw title
+are unchanged). Radar keyword matching/dedupe still use the raw title. Live:
+Prisha next_holiday "School closed – Uncapped Workday/Election Day", next Dec
+18; Prapti next Nov 25 early close, next_holiday Nov 11.
+
 **Step 3 done (2026-10-18) — the v2 page at `/v2`.** `static/v2.html` +
 `css/v2/` (`base` tokens/fonts/frame, `header`, `hero`, `month`, `photo`) +
 `js/v2/` (`main`, `util` poll/el helpers, `format`, `date-line`, `weather`,

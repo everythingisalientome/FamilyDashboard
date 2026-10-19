@@ -25,6 +25,10 @@ class CalendarFeed:
     #: today raises an alert in the photo-panel overlay in this colour. Blank =
     #: this feed never alerts — it just shows on the calendar as usual.
     alert_color: str = ""
+    #: If set (via ``CAL_<KEY>_CLOSED_LABEL``), holiday-category events from this
+    #: feed read "<label> – <title before its first ':'>" on the hero's NEXT
+    #: HOLIDAY line and the radar. Grid chips keep the raw title.
+    closed_label: str = ""
 
 
 #: Every ICS feed is a capability URL (anyone holding it can read the
@@ -89,9 +93,10 @@ def _feed_entry(raw_key: str, key: str, url: str) -> tuple[int, str, CalendarFee
     label = os.getenv(f"CAL_{raw_key}_LABEL", "").strip() or key.title()
     color = os.getenv(f"CAL_{raw_key}_COLOR", "").strip()
     alert_color = os.getenv(f"CAL_{raw_key}_ALERT_COLOR", "").strip()
+    closed_label = os.getenv(f"CAL_{raw_key}_CLOSED_LABEL", "").strip()
     order_raw = os.getenv(f"CAL_{raw_key}_ORDER", "").strip()
     order = int(order_raw) if order_raw.lstrip("-").isdigit() else 100
-    return order, key, CalendarFeed(key, label, url, color, alert_color)
+    return order, key, CalendarFeed(key, label, url, color, alert_color, closed_label)
 
 
 def _load_calendar_feeds() -> tuple[CalendarFeed, ...]:

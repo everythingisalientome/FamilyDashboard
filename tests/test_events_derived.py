@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 
 from app.config import Person
-from app.events_derived import hero, radar, waste
+from app.events_derived import closed_title, hero, radar, waste
 
 PRISHA = Person("prisha", "Prisha", "#19b2d8", 1, ("school",), ("prisha",))
 PRAPTI = Person("prapti", "Prapti", "#bc39bd", 2, (), ("prapti",))
@@ -38,7 +38,7 @@ def timed(start_utc: str, end_utc: str, title: str, persons: list[str]) -> dict:
 
 
 def run_hero(events: list[dict]) -> dict:
-    return hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"})
+    return hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"}, {})
 
 
 # --- hero --------------------------------------------------------------------
@@ -63,7 +63,7 @@ def test_running_all_day_span_is_still_upcoming() -> None:
     events = [day("2026-10-19", "Fall break", "school", end="2026-10-22",
                   persons=["prisha"], category="holiday")]
     col = run_hero(events)["persons"][0]
-    assert col["next"]["title"] == col["next_holiday"]["title"] == "Fall break"
+    assert col["next_holiday"]["title"] == "Fall break"
 
 
 def test_next_holiday_is_per_person() -> None:
@@ -76,8 +76,26 @@ def test_next_holiday_is_per_person() -> None:
     prisha, prapti = run_hero(events)["persons"]
     assert prisha["next"]["title"] == "Picture day"
     assert prisha["next_holiday"]["title"] == "Veterans Day"
-    assert prapti["next"]["title"] == "Daycare closed"
+    assert prapti["next"] is None  # holidays never show as NEXT UP
     assert prapti["next_holiday"]["title"] == "Daycare closed"
+
+
+def test_next_up_skips_holidays() -> None:
+    events = [
+        day("2026-11-03", "Election Day", "school", persons=["prisha"], category="holiday"),
+        day("2026-11-25", "Early release", "school", persons=["prisha"]),
+    ]
+    prisha = run_hero(events)["persons"][0]
+    assert prisha["next"]["start_date"] == "2026-11-25"
+    assert prisha["next_holiday"]["start_date"] == "2026-11-03"
+
+
+def test_next_up_is_none_with_only_holidays() -> None:
+    events = [day("2026-11-03", "Election Day", "school", persons=["prisha"],
+                  category="holiday")]
+    prisha = run_hero(events)["persons"][0]
+    assert prisha["next"] is None
+    assert prisha["next_holiday"]["title"] == "Election Day"
 
 
 def test_person_with_nothing_gets_nulls() -> None:
@@ -101,6 +119,52 @@ def test_family_pool_is_family_feed_events_matching_nobody() -> None:
     assert family["following"]["title"] == "Pumpkin patch"
 
 
+# --- closed label ------------------------------------------------------------
+
+LABELS = {"school": "School closed"}
+
+
+def test_closed_label_strips_colon_tail() -> None:
+    e = day("2026-11-03", "Uncapped Workday/Election Day: No School for Students",
+            "school", category="holiday")
+    assert closed_title(e, LABELS, {"holiday"}) == (
+        "School closed – Uncapped Workday/Election Day"
+    )
+
+
+def test_closed_label_without_colon() -> None:
+    e = day("2026-11-11", "Veterans Day", "school", category="holiday")
+    assert closed_title(e, LABELS, {"holiday"}) == "School closed – Veterans Day"
+
+
+def test_closed_label_leaves_unlabelled_feed_and_non_holidays() -> None:
+    family = day("2026-11-03", "Daycare closed: all day", category="holiday")
+    school = day("2026-11-05", "Early dismissal: 1pm", "school")
+    assert closed_title(family, LABELS, {"holiday"}) == "Daycare closed: all day"
+    assert closed_title(school, LABELS, {"holiday"}) == "Early dismissal: 1pm"
+
+
+def test_closed_label_on_hero_holiday_only() -> None:
+    raw = "Veterans Day: Schools Closed"
+    events = [
+        day("2026-10-22", "Picture day: bring smile", "school", persons=["prisha"]),
+        day("2026-11-11", raw, "school", persons=["prisha"], category="holiday"),
+    ]
+    prisha = hero(events, TODAY, NOW, ROSTER, {"family"}, {"holiday"}, LABELS)["persons"][0]
+    assert prisha["next"]["title"] == "Picture day: bring smile"
+    assert prisha["next_holiday"]["title"] == "School closed – Veterans Day"
+    assert events[1]["title"] == raw  # the grid's event is not mutated
+
+
+def test_radar_uses_closed_label() -> None:
+    events = [
+        day("2026-11-03", "Election Day: No School", "school", category="holiday"),
+        day("2026-11-05", "Early Dismissal: 1pm", "school"),
+    ]
+    titles = [r["title"] for r in radar(events, TODAY, 30, KW, LABELS, {"holiday"})]
+    assert titles == ["School closed – Election Day", "Early Dismissal: 1pm"]
+
+
 # --- radar -------------------------------------------------------------------
 
 KW = ("no school", "holiday", "early dismissal")
@@ -115,7 +179,7 @@ def test_radar_window_and_keyword_match() -> None:
         day("2026-11-20", "Holiday party"),                     # day 30: in
         day("2026-11-21", "Holiday market"),                    # day 31: out
     ]
-    titles = [r["title"] for r in radar(events, TODAY, 30, KW)]
+    titles = [r["title"] for r in radar(events, TODAY, 30, KW, {})]
     assert titles == ["No School week", "Early Dismissal", "Holiday party"]
 
 
@@ -124,7 +188,7 @@ def test_radar_dedupes_by_start_and_title() -> None:
         day("2026-11-26", "Thanksgiving Holiday", "school", end="2026-11-27"),
         day("2026-11-26", "Thanksgiving Holiday", "family", end="2026-11-27"),
     ]
-    assert radar(events, TODAY, 40, KW) == [
+    assert radar(events, TODAY, 40, KW, {}) == [
         {"start_date": "2026-11-26", "end_date": "2026-11-27",
          "title": "Thanksgiving Holiday", "category": None}
     ]
@@ -132,7 +196,7 @@ def test_radar_dedupes_by_start_and_title() -> None:
 
 def test_radar_caps_at_eight_chronological() -> None:
     events = [day(f"2026-10-{d}", f"Holiday {d}") for d in range(22, 32)]
-    titles = [r["title"] for r in radar(events, TODAY, 30, KW)]
+    titles = [r["title"] for r in radar(events, TODAY, 30, KW, {})]
     assert titles == [f"Holiday {d}" for d in range(22, 30)]
 
 
